@@ -14,6 +14,6 @@ router.use(verifyUser);
 router.post('/add-favorite', addFavoriteLocation);
 router.get('/get-favorites', getFavoriteLocations);  
 router.put('/update-favorite', updateFavoriteLocation);
-router.delete('/deletefavorite', deleteFavoriteLocation);
+router.delete('/delete-favorite', deleteFavoriteLocation);
 
 export default router;
