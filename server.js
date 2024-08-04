@@ -6,6 +6,12 @@ import cors from "cors";
 import url from "url";
 
 import authRoutes from "./src/routes/authRoutes.js";
+import bookingRoutes from "./src/routes/bookingRoutes.js";
+import locationRoutes from "./src/routes/locationRoutes.js";
+import paymentsRoutes from "./src/routes/paymentsRoutes.js";
+import profileRoutes from "./src/routes/profileRoutes.js";
+import favoritesRoutes from './src/routes/favoritesRoutes.js';
+import reviewRoutes from "./src/routes/reviewRoutes.js";
 
 dotenv.config();
 
@@ -50,6 +56,12 @@ app.use(express.json());
 app.use(cors());
 
 app.use("/auth", authRoutes);
+app.use("/booking", bookingRoutes);
+app.use("/location", locationRoutes);
+app.use("/payment", paymentsRoutes);
+app.use("/profile", profileRoutes);
+app.use("/favorites", favoritesRoutes);
+app.use("/reviews", reviewRoutes);
 
 server.listen(PORT, () => {
     console.log(`Server is running on PORT ${PORT}`)
