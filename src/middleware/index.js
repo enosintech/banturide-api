@@ -21,9 +21,12 @@ const refreshIdToken = async ( refreshToken ) => {
 
         if(!response.ok) {
             console.log("Failed to refresh token")
+            console.log(refreshToken)
         }
 
         const data = await response.json();
+
+        console.log(data);
         return data.id_token;
     } catch (error) {
         console.log(error)

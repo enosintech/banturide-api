@@ -47,24 +47,30 @@ export const passengerBookingRequest = async (req, res) => {
     try {
         const bookingRef = db.collection('bookings').doc();
         
-        await bookingRef.set(newBooking)
-        .then( async () => {
+        // Save the new booking to Firestore
+        await bookingRef.set(newBooking);
 
-            wss.clients.forEach((client) => {
-                if(client.userId === user.uid){
-                    sendDataToClient(client, { type: 'requestReceived', message: "Booking Request Received" });
-                }
-            })
+        // Retrieve the saved booking data
+        const bookingSnapshot = await bookingRef.get();
+        const bookingData = bookingSnapshot.data();
+        const bookingId = bookingRef.id; // Get the document ID
 
-            return res.status(200).json({
-                success: true,
-                message: "Booking Request Received Successfully!",
-                booking: bookingRef
-            })
+        // Notify the WebSocket clients
+        wss.clients.forEach((client) => {
+            if (client.userId === user.uid) {
+                sendDataToClient(client, { type: 'requestReceived', message: "Booking Request Received. Searching" });
+            }
+        });
 
-        }).catch((error) => {
-            console.log(error)
-        })
+        // Respond with the booking data and booking ID
+        return res.status(200).json({
+            success: true,
+            message: "Booking Request Received Successfully!",
+            booking: {
+                bookingId,
+                ...bookingData
+            }
+        });
 
     } catch (error) {
         console.error("Error in booking a ride:", error);

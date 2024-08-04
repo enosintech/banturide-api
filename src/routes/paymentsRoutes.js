@@ -1,7 +1,7 @@
 import express from "express";
 
-import { confirmPaymentAndMarkRideAsSuccessful } from "../controllers/paymentsController";
-import { verifyUser } from "../middleware";
+import { confirmPaymentAndMarkRideAsSuccessful } from "../controllers/paymentsController.js";
+import { verifyUser } from "../middleware/index.js";
 
 const router = express.Router();
 
