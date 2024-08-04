@@ -326,62 +326,89 @@ export const searchDriversForBooking = async (req, res) => {
 export const assignDriverToBooking = async (req, res) => {
     const { bookingId, driverId } = req.body;
 
+    if (!bookingId || !driverId) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing bookingId or driverId in request body.",
+        });
+    }
+
     try {
-        const bookingRef = db.collection('bookings').doc(bookingId);
-        const driverRef = db.collection('drivers').doc(driverId);
+        // Perform the transaction
+        await db.runTransaction(async (transaction) => {
+            const bookingRef = db.collection('bookings').doc(bookingId);
+            const driverRef = db.collection('drivers').doc(driverId);
 
-        const bookingSnapshot = await bookingRef.get();
-        const driverSnapshot = await driverRef.get();
+            const bookingSnapshot = await transaction.get(bookingRef);
+            const driverSnapshot = await transaction.get(driverRef);
 
-        if (!bookingSnapshot.exists || !driverSnapshot.exists) {
-            return res.status(404).json({
-                success: false,
-                message: "Booking or driver not found.",
+            if (!bookingSnapshot.exists) {
+                throw new Error("Booking not found.");
+            }
+            if (!driverSnapshot.exists) {
+                throw new Error("Driver not found.");
+            }
+
+            const driver = driverSnapshot.data();
+            const booking = bookingSnapshot.data();
+
+            // Update the booking and driver status
+            transaction.update(bookingRef, {
+                driverId: driverId,
+                status: 'confirmed',
+                driverCurrentLocation: driver.location.coordinates
             });
-        }
 
-        const driver = driverSnapshot.data();
+            transaction.update(driverRef, {
+                driverStatus: 'unavailable'
+            });
 
-        await bookingRef.update({
-            driverId: driverId,
-            status: 'confirmed',
-            driverCurrentLocation: driver.location.coordinates
-        });
+            // Fetch user information
+            const userRef = db.collection('users').doc(booking.userId);
+            const userSnapshot = await transaction.get(userRef);
 
-        await driverRef.update({
-            driverStatus: 'unavailable'
-        });
-
-        const booking = bookingSnapshot.data();
-
-        const userRef = db.collection('users').doc(booking.userId);
-
-        const userSnapshot = await userRef.get();
-        const user = userSnapshot.data();
-
-        // Notify user and driver about driver assignment
-        wss.clients.forEach((client) => {
-            if(client.userId === booking.userId){
-                sendDataToClient(client, { type: 'driverAssigned', message: "You have a new driver", booking: JSON.stringify(booking), driver: JSON.stringify(driver) });
+            if (!userSnapshot.exists) {
+                throw new Error("User not found.");
             }
-        });
-        
-        wss.clients.forEach((client) => {
-            if(client.userId === booking.driverId){
-                sendDataToClient(client, { type: 'driverAssigned', message: "You have a new customer", booking: JSON.stringify(booking), user: JSON.stringify(user)});
-            }
-        });
 
-        return res.status(200).json({
-            success: true,
-            message: "Driver selected and booking confirmed successfully!",
+            const user = userSnapshot.data();
+
+            // Save user and driver data to be used later for notifications
+            return { booking, driver, user };
+        }).then(({ booking, driver, user }) => {
+            // Notify user and driver about driver assignment
+            wss.clients.forEach((client) => {
+                try {
+                    if (client.userId === booking.userId) {
+                        sendDataToClient(client, {
+                            type: 'driverAssigned',
+                            message: "You have a new driver",
+                            booking: JSON.stringify(booking),
+                            driver: JSON.stringify(driver)
+                        });
+                    } else if (client.userId === driverId) {
+                        sendDataToClient(client, {
+                            type: 'driverAssigned',
+                            message: "You have a new customer",
+                            booking: JSON.stringify(booking),
+                            user: JSON.stringify(user)
+                        });
+                    }
+                } catch (wsError) {
+                    console.error("WebSocket error:", wsError);
+                }
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: "Driver selected and booking confirmed successfully!",
+            });
         });
     } catch (error) {
         console.error("Error in assigning driver to booking:", error);
         return res.status(500).json({
             success: false,
-            message: "Error in assigning driver to booking.",
-            error: error.message || error,
+            message: error.message || "Error in assigning driver to booking.",
         });
     }
 };
