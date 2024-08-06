@@ -83,6 +83,7 @@ export const passengerBookingRequest = async (req, res) => {
 };
 
 export const searchDriversForBooking = async (req, res) => {
+    
     const { bookingId } = req.body;
     const reservedDrivers = new Map();
     const clientReservations = new Map(); 
@@ -349,7 +350,8 @@ export const assignDriverToBooking = async (req, res) => {
         });
 
         await driverRef.update({
-            driverStatus: 'unavailable'
+            driverStatus: 'unavailable',
+            reservedUntil: null
         });
 
         const booking = bookingSnapshot.data();
