@@ -96,6 +96,7 @@ export const registerDriverController = async (req, res) => {
                 address,
                 role: 'driver',
                 driverStatus: 'available',
+                isVerifiedDriver: false,
                 rated: false,
                 knownFor: ["New Driver"],
                 location: {

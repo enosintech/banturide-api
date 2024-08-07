@@ -285,7 +285,7 @@ export const searchDriversForBooking = async (req, res) => {
                 }
             });
 
-        // Handle timeout after 60 seconds
+        // Handle timeout after 2 minutes
         searchTimeout = setTimeout(async () => {
             if (driverStatusUnsubscribe) driverStatusUnsubscribe();
             if (searchTimeout) clearTimeout(searchTimeout); // Stop checking booking status
@@ -308,7 +308,7 @@ export const searchDriversForBooking = async (req, res) => {
                     message: "Drivers were found and the search is complete.",
                 });
             }
-        }, 60000);
+        }, 120000);
 
     } catch (error) {
         console.error("Error in searching drivers for booking:", error);
@@ -354,23 +354,37 @@ export const assignDriverToBooking = async (req, res) => {
             reservedUntil: null
         });
 
-        const booking = bookingSnapshot.data();
+        // Fetch updated booking and driver data
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
 
-        const userRef = db.collection('users').doc(booking.userId);
+        const updatedDriverSnapshot = await driverRef.get();
+        const updatedDriver = updatedDriverSnapshot.data();
 
+        const userRef = db.collection('users').doc(updatedBooking.userId);
         const userSnapshot = await userRef.get();
         const user = userSnapshot.data();
 
         // Notify user and driver about driver assignment
         wss.clients.forEach((client) => {
-            if(client.userId === booking.userId){
-                sendDataToClient(client, { type: 'driverAssigned', message: "You have a new driver", booking: JSON.stringify(booking), driver: JSON.stringify(driver) });
+            if(client.userId === updatedBooking.userId){
+                sendDataToClient(client, {
+                    type: 'driverAssigned',
+                    message: "You have a new driver",
+                    booking: JSON.stringify(updatedBooking),
+                    driver: JSON.stringify(updatedDriver)
+                });
             }
         });
         
         wss.clients.forEach((client) => {
             if(client.userId === driverId){
-                sendDataToClient(client, { type: 'driverAssigned', message: "You have a new customer", booking: JSON.stringify(booking), user: JSON.stringify(user)});
+                sendDataToClient(client, {
+                    type: 'driverAssigned',
+                    message: "You have a new customer",
+                    booking: JSON.stringify(updatedBooking),
+                    user: JSON.stringify(user)
+                });
             }
         });
 
@@ -387,44 +401,6 @@ export const assignDriverToBooking = async (req, res) => {
         });
     }
 };
-
-export const unreserveDriverFromBooking = async (req, res) => {
-    const { driverId } = req.body;
-
-    try {
-        const driverRef = db.collection('drivers').doc(driverId);
-        const driverSnapshot = await driverRef.get();
-
-        if (!bookingSnapshot.exists || !driverSnapshot.exists) {
-            return res.status(404).json({
-                success: false,
-                message: "Booking or driver not found.",
-            });
-        }
-
-        await driverRef.update({
-            driverStatus: 'available',
-            reservedBy: null,
-            reservedUntil: null
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: "Driver rejected successfully"
-        })
-
-
-    } catch (error) {
-        console.log(error)
-
-        return res.status(500).json({
-            success: false,
-            message: "Error in rejecting driver.",
-            error: error.message || error,
-        })
-    }
-
-}
 
 // Cancel Booking
 export const cancelBooking = async (req, res) => {
