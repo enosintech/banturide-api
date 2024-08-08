@@ -1,6 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import { db, getAuth } from "../config/firebase.js";
+import { db } from "../config/firebase.js";
 
 import { sendDataToClient, wss } from "../../server.js";
 
@@ -28,7 +28,7 @@ const toRadians = (degrees) => {
   
 // Update driver location
 export const updateDriverLocation = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -56,7 +56,7 @@ export const updateDriverLocation = async (req, res) => {
 };
 
 export const updateBookingLocation = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if(!user){
         return res.status(403).json({ error: "Unauthorized"});

@@ -21,7 +21,7 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
 // Passenger Booking Request
 export const passengerBookingRequest = async (req, res) => {
     const { pickUpLatitude, pickUpLongitude, dropOffLatitude, dropOffLongitude, price, hasThirdStop, thirdStopLatitude, thirdStopLongitude } = req.body;
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user || !pickUpLatitude || !pickUpLongitude || !dropOffLatitude || !dropOffLongitude) {
         return res.status(400).json({

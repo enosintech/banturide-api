@@ -3,7 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-import { db, getAuth } from "../config/firebase.js";
+import { db } from "../config/firebase.js";
 import cloudinary from "../config/cloudinary.js";
 
 // Ensure uploads directory exists
@@ -41,7 +41,7 @@ const upload = multer({
 // passenger controllers
 
 export const getUserProfile = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -66,7 +66,7 @@ export const getUserProfile = async (req, res) => {
 
 // Upload profile picture
 export const uploadProfilePicture = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -94,7 +94,7 @@ export const uploadProfilePicture = async (req, res) => {
 
 // Remove profile picture
 export const removeProfilePicture = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -120,7 +120,7 @@ export const removeProfilePicture = async (req, res) => {
 
 // Edit user's name
 export const editUserName = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -138,7 +138,7 @@ export const editUserName = async (req, res) => {
 
 // Toggle notifications for user
 export const toggleNotifications = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -156,7 +156,7 @@ export const toggleNotifications = async (req, res) => {
 
 // Toggle driver should call
 export const toggleDriverShouldCall = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -176,7 +176,7 @@ export const toggleDriverShouldCall = async (req, res) => {
 
 // Edit driver profile
 export const editDriverProfile = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -205,7 +205,7 @@ export const editDriverProfile = async (req, res) => {
 
 // Toggle driver availability
 export const toggleDriverAvailability = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -231,7 +231,7 @@ export const toggleDriverAvailability = async (req, res) => {
 
 // Get all driver information
 export const getDriverInfo = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -261,7 +261,7 @@ export const getDriverInfo = async (req, res) => {
 
 // Get Total Earnings
 export const getTotalEarnings = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -287,7 +287,7 @@ export const getTotalEarnings = async (req, res) => {
 
 // Update Driver Status (e.g., set status to 'online' or 'offline')
 export const updateDriverStatus = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -310,7 +310,7 @@ export const updateDriverStatus = async (req, res) => {
 
 // Get Driver Statistics
 export const getDriverStatistics = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -342,7 +342,7 @@ export const getDriverStatistics = async (req, res) => {
 
 // Helper function for getting total earnings (used internally)
 const getTotalEarningsInternal = async (req, res) => {
-    const user = req.currentUser;
+    const user = req.user;
 
     try {
         const bookingsSnapshot = await db.collection('bookings').where('driverId', '==', user.uid).get();

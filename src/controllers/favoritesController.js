@@ -1,10 +1,10 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import { db, getAuth } from "../config/firebase.js";
+import { db } from "../config/firebase.js";
 
 // Add a new favorite location (home, work, other)
 export const addFavoriteLocation = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -33,7 +33,7 @@ export const addFavoriteLocation = async (req, res) => {
 
 // Get favorite locations for a user
 export const getFavoriteLocations = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized You" });
@@ -49,7 +49,7 @@ export const getFavoriteLocations = async (req, res) => {
 };
 
 export const updateFavoriteLocation = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
@@ -84,7 +84,7 @@ export const updateFavoriteLocation = async (req, res) => {
 
 // Delete a favorite location
 export const deleteFavoriteLocation = async (req, res) => {
-    const user = getAuth().currentUser;
+    const user = req.user;
 
     if (!user) {
         return res.status(403).json({ error: "Unauthorized" });
