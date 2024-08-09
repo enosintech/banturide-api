@@ -18,6 +18,9 @@ const refreshIdToken = async ( refreshToken ) => {
             },
             body: JSON.stringify(payload)
         })
+        .catch((err) => {
+            console.log(err)
+        })
 
         if(!response.ok) {
             console.log("Failed to refresh token")
