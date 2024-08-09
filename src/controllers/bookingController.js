@@ -171,7 +171,7 @@ export const searchDriversForBooking = async (req, res) => {
                     driverData.location.coordinates[1]
                 );
 
-                if (distance <= 5) {
+                if (distance < 2) {
                     const driverId = doc.id;
 
                     // Check if the driver is already reserved
@@ -226,7 +226,7 @@ export const searchDriversForBooking = async (req, res) => {
                             driverData.location.coordinates[1]
                         );
 
-                        if (distance <= 5) {
+                        if (distance < 2) {
                             const driverId = change.doc.id;
 
                             // Check if the driver is already reserved
