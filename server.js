@@ -34,7 +34,13 @@ wss.on("connection", (ws, request) => {
     }
 
     ws.on('message', (message) => {
-        console.log(`Received message from client ${ws.userId}:`, message.toString('utf-8'));
+
+        const data = JSON.parse(message);
+
+        if (data.type === 'sendMessage') {
+            sendMessageToRecipient(data.senderId, data.recipientId, data.content);
+        }
+
     });
 
     ws.on('close', () => {
@@ -50,6 +56,21 @@ function sendDataToClient(client, data) {
     if(client.readyState === WebSocket.OPEN){
         client.send(JSON.stringify(data))
     }
+}
+
+function sendMessageToRecipient(senderId, recipientId, content) {
+    wss.clients.forEach((client) => {
+        if (client.userId === recipientId && client.readyState === WebSocket.OPEN) {
+            const messageData = {
+                type: 'message',
+                senderId: senderId,
+                content: content,
+                timestamp: new Date(),
+            };
+            client.send(JSON.stringify(messageData));
+            console.log(`Message from ${senderId} to ${recipientId} sent.`);
+        }
+    });
 }
 
 app.use(express.json());

@@ -31,6 +31,7 @@ const deg2rad = (deg) => {
 
 // Controller to handle confirming payment and marking the ride as successful
 export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
+
   const user = req.user
 
   if (!user) {
@@ -68,7 +69,7 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
       bookingId,
       amount,
       paymentStatus: 'completed',
-      paymentType: 'cash',
+      paymentType: booking.paymentMethod,
       createdAt: FieldValue.serverTimestamp()
     };
 
@@ -82,9 +83,12 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
       paymentReceived: true
     });
 
+    const updatedBookingSnapshot = await bookingRef.get();
+    const updatedBooking = updatedBookingSnapshot.data();
+
     wss.clients.forEach((client) => {
-      if (client.userId === booking.userId) {
-          sendDataToClient(client, { type: 'paymentReceived', title: "Ride Complete", message: "Your ride is complete, please rate your driver", booking: JSON.stringify(booking) });
+      if (client.userId === updatedBooking.userId) {
+          sendDataToClient(client, { type: 'paymentReceived', title: "Ride Complete", message: "Your ride is complete, Please remember to Rate your driver", booking: JSON.stringify(updatedBooking) });
       }
     });
 
@@ -100,7 +104,6 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Error in confirming payment and marking ride as successful.",
-      error: error.message || error,
     });
 
   }

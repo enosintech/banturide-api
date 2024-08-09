@@ -5,7 +5,7 @@ import { db } from "../config/firebase.js";
 import { sendDataToClient, wss } from "../../server.js";
 
 const calculateDistance = (driverLocation, dropoffLocation) => {
-    const earthRadiusKm = 6371; // Radius of the Earth in kilometers
+    const earthRadiusKm = 6371; 
     const [lat1, lon1] = driverLocation;
     const { latitude: lat2, longitude: lon2 } = dropoffLocation;
 
@@ -26,7 +26,6 @@ const toRadians = (degrees) => {
     return degrees * (Math.PI / 180);
 };
   
-// Update driver location
 export const updateDriverLocation = async (req, res) => {
     const user = req.user;
 
@@ -51,7 +50,7 @@ export const updateDriverLocation = async (req, res) => {
 
     } catch (error) {
         console.error("Error updating driver location:", error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: "Error updating driver location" });
     }
 };
 
@@ -82,7 +81,7 @@ export const updateBookingLocation = async (req, res) => {
             }
         };
 
-        listener = driverRef.onSnapshot((snapshot) => {
+        listener = driverRef.onSnapshot( async (snapshot) => {
             if (snapshot.exists) {
                 const driverData = snapshot.data();
                 const driverLocation = driverData.location.coordinates; 
@@ -91,6 +90,7 @@ export const updateBookingLocation = async (req, res) => {
 
                 if (distance < 1) {
                     stopListening(); 
+                    return res.status(200).json({success: true, message: "You are close to your destination"})
                 }
 
                 bookingRef.update({
@@ -98,9 +98,12 @@ export const updateBookingLocation = async (req, res) => {
                     updatedAt: FieldValue.serverTimestamp()
                 });
 
+                const updatedBookingSnapshot = await bookingRef.get();
+                const updatedBooking = updatedBookingSnapshot.data();
+
                 wss.clients.forEach((client) => {
                     if (client.userId === booking.userId) {
-                        sendDataToClient(client, { type: 'locationUpdated', message: "Your current location has been updated", booking: JSON.stringify(booking) });
+                        sendDataToClient(client, { type: 'locationUpdated', message: "Your driver location has been updated", booking: JSON.stringify(updatedBooking) });
                     }
                 });
 
@@ -113,6 +116,7 @@ export const updateBookingLocation = async (req, res) => {
         const handleBookingCompletionOrCancellation = () => {
             if (booking.status === 'completed' || booking.status === 'arrived' || booking.status === 'cancelled') {
                 stopListening(); 
+                return res.status(200).json({success: true, message: "Your booking is complete and location has stopped updating"})
             }
         };
 
@@ -120,6 +124,6 @@ export const updateBookingLocation = async (req, res) => {
 
     } catch (error) {
         console.log("Error getting trip location:", error);
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: "Error getting trip location:" });
     }
 }

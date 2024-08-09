@@ -26,7 +26,6 @@ const refreshIdToken = async ( refreshToken ) => {
 
         const data = await response.json();
 
-        console.log(data);
         return data.id_token;
     } catch (error) {
         console.log(error)

@@ -92,10 +92,6 @@ export const getDriverReviews = async (req, res) => {
         return res.status(403).json({ error: "Unauthorized" });
     }
 
-    if (!driverId) {
-        return res.status(400).json({ error: "Driver ID is required" });
-    }
-
     try {
         const reviewsSnapshot = await db.collection('reviews').where('driverId', '==', user.uid).get();
         const reviews = [];

@@ -5,9 +5,9 @@ import { verifyUser } from "../middleware/index.js";
 
 const router = express.Router();
 
-router.post("/create-passenger", registerPassengerController);
+router.post("/passenger-signup", registerPassengerController);
 
-router.post("/create-driver", registerDriverController);
+router.post("/driver-signup", registerDriverController);
 
 router.post("/signin", signinController);
 

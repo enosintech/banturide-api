@@ -41,6 +41,7 @@ const upload = multer({
 // passenger controllers
 
 export const getUserProfile = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -60,7 +61,8 @@ export const getUserProfile = async (req, res) => {
 
         res.status(200).json(userData);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Error when obtaining user profile details", error)
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -87,7 +89,8 @@ export const uploadProfilePicture = async (req, res) => {
 
             res.status(200).json({ message: "Profile picture uploaded successfully"});
         } catch (error) {
-            res.status(500).json({ error: error.message });
+            console.log("Error uploading profile picture", error)
+            res.status(500).json({ error: "Error when obtaining profile details." });
         }
     });
 };
@@ -111,11 +114,12 @@ export const removeProfilePicture = async (req, res) => {
 
         await db.collection('users').doc(user.uid).update({ avatar: null });
 
-        const updatedUserDoc = await db.collection('users').doc(user.uid).get();
         res.status(200).json({ message: "profile picture successfully removed"});
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Error removing profile picture", error)
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // Edit user's name
@@ -130,9 +134,12 @@ export const editUserName = async (req, res) => {
 
     try {
         await db.collection('users').doc(user.uid).update({ firstname, lastname });
+
         res.status(200).json({ message: "Username updated successfully"});
+
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Error editing username", error)
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -148,9 +155,11 @@ export const toggleNotifications = async (req, res) => {
 
     try {
         await db.collection('users').doc(user.uid).update({ notificationsEnabled: value });
-        res.status(200).json("Notifications updated successfully");
+
+        res.status(200).json({ message: "Notifications updated successfully", value: value });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Error toggling notifications", error)
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -166,9 +175,11 @@ export const toggleDriverShouldCall = async (req, res) => {
 
     try {
         await db.collection('users').doc(user.uid).update({ driverShouldCall: value });
-        res.status(200).json({ message: "Driver Should Call Updated Successfully"});
+
+        res.status(200).json({ message: "Driver Should Call Updated Successfully", value: value});
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Error toggling driver should call", error)
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -197,9 +208,10 @@ export const editDriverProfile = async (req, res) => {
             vehicleInfo
         });
         const updatedDriver = await driverRef.get();
+
         res.status(200).json(updatedDriver.data());
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -218,14 +230,17 @@ export const toggleDriverAvailability = async (req, res) => {
         if (!doc.exists) {
             return res.status(404).json({ error: "Driver not found" });
         }
+
         const currentStatus = doc.data().driverStatus;
+
         await driverRef.update({
             driverStatus: currentStatus === 'available' ? 'unavailable' : 'available'
         });
+
         const updatedDoc = await driverRef.get();
-        res.status(200).json(updatedDoc.data());
+        res.status(200).json({ message: "Current Status Updated", currentStatus: updatedDoc.data().driverStatus});
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -254,7 +269,7 @@ export const getDriverInfo = async (req, res) => {
         res.status(200).json(driverData);
         
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -281,7 +296,7 @@ export const getTotalEarnings = async (req, res) => {
         res.status(200).json({ totalEarnings });
     } catch (error) {
         console.error("Error getting total earnings:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -304,7 +319,7 @@ export const updateDriverStatus = async (req, res) => {
         res.status(200).json({ message: "Driver status updated successfully" });
     } catch (error) {
         console.error("Error updating driver status:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -336,7 +351,7 @@ export const getDriverStatistics = async (req, res) => {
         res.status(200).json(statistics);
     } catch (error) {
         console.error("Error getting driver statistics:", error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Error when obtaining profile details." });
     }
 };
 
@@ -358,7 +373,7 @@ const getTotalEarningsInternal = async (req, res) => {
         return { totalEarnings };
     } catch (error) {
         console.error("Error getting total earnings:", error);
-        throw new Error(error.message);
+        throw new Error("Error when obtaining profile details.");
     }
 };
 

@@ -5,7 +5,6 @@ const auth = getAuth();
 export const registerPassengerController = async (req, res) => {
     const { email, password, firstname, lastname, gender } = req.body;
 
-    // Improved validation
     if (!email || !password || !firstname || !lastname) {
         return res.status(422).json({
             message: "Missing required fields",
@@ -19,13 +18,18 @@ export const registerPassengerController = async (req, res) => {
     }
 
     try {
-        // Create the user with Firebase Authentication
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
         try {
-            // Write user data to Firestore
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (userDoc.exists) {
+                await deleteUser(user);
+                return res.status(400).json({ message: "User already exists" });
+            }
+
             await db.collection('users').doc(user.uid).set({
+                userId: user.uid,
                 firstname,
                 lastname,
                 email,
@@ -35,26 +39,24 @@ export const registerPassengerController = async (req, res) => {
                 createdAt: new Date().toISOString()
             });
 
-            res.status(201).json({ message: "User created successfully", userCredential });
-        } catch (firestoreError) {
-            console.error('Error writing user data to Firestore:', firestoreError);
+            return res.status(201).json({ message: "User created successfully", userCredential });
 
-            // Roll back user creation in Firebase Authentication
+        } catch (firestoreError) {
             await deleteUser(user);
-            res.status(500).json({ message: "Failed to write user data to Firestore. User creation rolled back." });
+            return res.status(500).json({ 
+                message: "Failed to write user data to Firestore. User creation rolled back.", 
+                error: firestoreError 
+            });
         }
     } catch (error) {
-        console.error('Error registering user:', error);
-
-        // More granular error handling
         if (error.code === 'auth/email-already-in-use') {
-            res.status(400).json({ message: "Email is already in use" });
+            return res.status(400).json({ message: "Email is already in use" });
         } else if (error.code === 'auth/invalid-email') {
-            res.status(400).json({ message: "Invalid email address" });
+            return res.status(400).json({ message: "Invalid email address" });
         } else if (error.code === 'auth/weak-password') {
-            res.status(400).json({ message: "Password is too weak" });
+            return res.status(400).json({ message: "Password is too weak" });
         } else {
-            res.status(500).json({ message: "An error occurred while registering user" });
+            return res.status(500).json({ message: "An error occurred while registering user" });
         }
     }
 };
@@ -62,7 +64,6 @@ export const registerPassengerController = async (req, res) => {
 export const registerDriverController = async (req, res) => {
     const { email, password, firstname, lastname, dob, phoneNumber, nrcNumber, address } = req.body;
 
-    // Improved validation
     if (!email || !password || !firstname || !lastname || !dob || !phoneNumber || !nrcNumber || !address) {
         return res.status(422).json({
             message: "Missing required fields",
@@ -80,13 +81,18 @@ export const registerDriverController = async (req, res) => {
     }
 
     try {
-        // Create the user with Firebase Authentication
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
         try {
-            // Write user data to Firestore
+            const userDoc = await db.collection('users').doc(user.uid).get();
+            if (userDoc.exists) {
+                await deleteUser(user);
+                return res.status(400).json({ message: "User already exists" });
+            }
+
             await db.collection('drivers').doc(user.uid).set({
+                userId: user.uid,
                 firstname,
                 lastname,
                 dob,
@@ -106,26 +112,24 @@ export const registerDriverController = async (req, res) => {
                 createdAt: new Date().toISOString()
             });
 
-            res.status(201).json({ message: "Driver registered successfully", userCredential });
-        } catch (firestoreError) {
-            console.error('Error writing driver data to Firestore:', firestoreError);
+            return res.status(201).json({ message: "Driver registered successfully", userCredential });
 
-            // Roll back user creation in Firebase Authentication
+        } catch (firestoreError) {
             await deleteUser(user);
-            res.status(500).json({ message: "Failed to write driver data to Firestore. User creation rolled back." });
+            return res.status(500).json({ 
+                message: "Failed to write driver data to Firestore. User creation rolled back.", 
+                error: firestoreError 
+            });
         }
     } catch (error) {
-        console.error('Error registering driver:', error);
-
-        // More granular error handling
         if (error.code === 'auth/email-already-in-use') {
-            res.status(400).json({ message: "Email is already in use" });
+            return res.status(400).json({ message: "Email is already in use" });
         } else if (error.code === 'auth/invalid-email') {
-            res.status(400).json({ message: "Invalid email address" });
+            return res.status(400).json({ message: "Invalid email address" });
         } else if (error.code === 'auth/weak-password') {
-            res.status(400).json({ message: "Password is too weak" });
+            return res.status(400).json({ message: "Password is too weak" });
         } else {
-            res.status(500).json({ message: "An error occurred while registering driver" });
+            return res.status(500).json({ message: "An error occurred while registering driver" });
         }
     }
 };
@@ -135,8 +139,11 @@ export const signinController = async (req, res) => {
 
     if (!email || !password) {
         return res.status(422).json({
-            email: "Email is required",
-            password: "Password is required",
+            message: "Missing required fields",
+            fields: {
+                email: !email ? "Email is required" : undefined,
+                password: !password ? "Password is required" : undefined,
+            }
         });
     }
 
@@ -145,16 +152,23 @@ export const signinController = async (req, res) => {
 
         res.status(200).json({ message: "Logged in successfully", userCredential });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: error.message || "An error occurred while logging in" });
+        if (error.code === 'auth/user-not-found') {
+            return res.status(404).json({ message: "User not found" });
+        } else if (error.code === 'auth/wrong-password') {
+            return res.status(401).json({ message: "Incorrect password" });
+        } else if (error.code === 'auth/invalid-email') {
+            return res.status(400).json({ message: "Invalid email address" });
+        } else {
+            return res.status(500).json({ message: "An error occurred while logging in", error: error});
+        }
     }
-}
+};
 
 export const signoutController = async (req, res) => {
     try {
         await signOut(auth);
-        res.status(200).json({ message: "Logged out successfully"});
+        res.status(200).json({ message: "Logged out successfully" });
     } catch (error) {
-        res.status(500).json( { message : "Internal Server Error"} )
+        res.status(500).json({ message: "An error occurred while logging out" });
     }
-}
+};

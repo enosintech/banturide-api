@@ -2,7 +2,6 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { db } from "../config/firebase.js";
 
-// Add a new favorite location (home, work, other)
 export const addFavoriteLocation = async (req, res) => {
     const user = req.user;
 
@@ -25,26 +24,28 @@ export const addFavoriteLocation = async (req, res) => {
         const favoriteRef = db.collection('favoriteLocations').doc();
         await favoriteRef.set(favoriteLocation);
 
-        res.status(201).json({ id: favoriteRef.id, ...favoriteLocation });
+        res.status(201).json({ message: "favorite location added successfully", success: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Errr adding favorite location", error);
+        res.status(500).json({ error: "Error adding favorite location" });
     }
 };
 
-// Get favorite locations for a user
 export const getFavoriteLocations = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized You" });
+        return res.status(403).json({ error: "Unauthorized" });
     }
 
     try {
         const favoriteLocationsSnapshot = await db.collection('favoriteLocations').where('userId', '==', user.uid).get();
         const favoriteLocations = favoriteLocationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         res.status(200).json(favoriteLocations);
+
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Error getting favorite locations", error);
+        res.status(500).json({ error: "Error getting favorite locations" });
     }
 };
 
@@ -75,14 +76,13 @@ export const updateFavoriteLocation = async (req, res) => {
             updatedAt: FieldValue.serverTimestamp()
         });
 
-        const updatedFavoriteDoc = await favoriteRef.get();
-        res.status(200).json(updatedFavoriteDoc.data());
+        res.status(200).json({ message: "Favorite location updated successfully!", success: true});
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Error updating favorite location", error);
+        res.status(500).json({ error: "Error updating favorite location" });
     }
 };
 
-// Delete a favorite location
 export const deleteFavoriteLocation = async (req, res) => {
     const user = req.user;
 
@@ -105,8 +105,10 @@ export const deleteFavoriteLocation = async (req, res) => {
         }
 
         await favoriteRef.delete();
-        res.status(200).json({ message: 'Favorite location deleted' });
+
+        res.status(200).json({ message: 'Favorite location deleted Successfully!', success: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log("Error deleting favorite location", error);
+        res.status(500).json({ error: "Error deleting favorite location" });
     }
 };

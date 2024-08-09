@@ -1,12 +1,11 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import { db, getAuth } from "../config/firebase.js";
+import { db } from "../config/firebase.js";
 
 import { sendDataToClient, wss } from "../../server.js";
 
-// Helper function to get distance between two points
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the earth in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
     const a = 
@@ -14,19 +13,26 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
         Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
         Math.sin(dLon / 2) * Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in km
+    const distance = R * c;
     return distance;
 }
 
-// Passenger Booking Request
 export const passengerBookingRequest = async (req, res) => {
     const { pickUpLatitude, pickUpLongitude, dropOffLatitude, dropOffLongitude, price, hasThirdStop, thirdStopLatitude, thirdStopLongitude } = req.body;
+
     const user = req.user;
 
-    if (!user || !pickUpLatitude || !pickUpLongitude || !dropOffLatitude || !dropOffLongitude) {
+    if(!user) {
         return res.status(400).json({
             success: false,
-            message: "User, pick-up, and drop-off locations are required.",
+            message: "Unauthorized"
+        })
+    }
+
+    if ( !pickUpLatitude || !pickUpLongitude || !dropOffLatitude || !dropOffLongitude) {
+        return res.status(400).json({
+            success: false,
+            message: "pick-up, and drop-off locations are required.",
         });
     }
 
@@ -35,34 +41,32 @@ export const passengerBookingRequest = async (req, res) => {
         pickUpLocation: { latitude: pickUpLatitude, longitude: pickUpLongitude },
         dropOffLocation: { latitude: dropOffLatitude, longitude: dropOffLongitude },
         price,
+        seats,
+        paymentMethod,
+        hasThirdStop,
         status: 'pending',
         paymentReceived: false,
         createdAt: FieldValue.serverTimestamp()
     };
 
     if (hasThirdStop && thirdStopLatitude && thirdStopLongitude) {
-        newBooking.thirdStop = { latitude: thirdStopLatitude, longitude: thirdStopLongitude };
+        newBooking.thirdStopLocation = { latitude: thirdStopLatitude, longitude: thirdStopLongitude };
     }
 
     try {
         const bookingRef = db.collection('bookings').doc();
-        
-        // Save the new booking to Firestore
         await bookingRef.set(newBooking);
 
-        // Retrieve the saved booking data
         const bookingSnapshot = await bookingRef.get();
         const bookingData = bookingSnapshot.data();
-        const bookingId = bookingRef.id; // Get the document ID
+        const bookingId = bookingRef.id;
 
-        // Notify the WebSocket clients
         wss.clients.forEach((client) => {
             if (client.userId === user.uid) {
-                sendDataToClient(client, { type: 'requestReceived', message: "Booking Request Received. Searching" });
+                sendDataToClient(client, { type: 'requestReceived', message: "Booking Request Received Successfully!" });
             }
         });
 
-        // Respond with the booking data and booking ID
         return res.status(200).json({
             success: true,
             message: "Booking Request Received Successfully!",
@@ -73,11 +77,11 @@ export const passengerBookingRequest = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Error in booking a ride:", error);
+        console.log("Error in booking ride", error);
         return res.status(500).json({
             success: false,
             message: "Error in booking a ride.",
-            error: error.message || error,
+            error: "An internal server error occured",
         });
     }
 };
@@ -189,8 +193,9 @@ export const searchDriversForBooking = async (req, res) => {
                                 if (client.userId === booking.userId) {
                                     sendDataToClient(client, {
                                         type: 'driverFound',
-                                        message: "A driver has been found initially and is reserved for 30 seconds to be picked",
-                                        driver: JSON.stringify(driverData)
+                                        message: "A driver has been found initially and is reserved for 30 seconds",
+                                        driver: JSON.stringify(driverData),
+                                        distance: distance
                                     });
                                 }
                             });
@@ -245,7 +250,8 @@ export const searchDriversForBooking = async (req, res) => {
                                             sendDataToClient(client, {
                                                 type: 'driverFound',
                                                 message: "A driver has been found in real time and is reserved for 30 seconds to be picked",
-                                                driver: JSON.stringify(driverData)
+                                                driver: JSON.stringify(driverData),
+                                                distance: distance,
                                             });
                                         }
                                     });
@@ -318,12 +324,10 @@ export const searchDriversForBooking = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in processing your request.",
-            error: error.message || error,
         });
     }
 };
 
-// Assign Driver to Booking
 export const assignDriverToBooking = async (req, res) => {
     const { bookingId, driverId } = req.body;
 
@@ -344,6 +348,7 @@ export const assignDriverToBooking = async (req, res) => {
         const driver = driverSnapshot.data();
 
         await bookingRef.update({
+            bookingId: bookingRef.id,
             driverId: driverId,
             status: 'confirmed',
             driverCurrentLocation: driver.location.coordinates
@@ -354,7 +359,6 @@ export const assignDriverToBooking = async (req, res) => {
             reservedUntil: null
         });
 
-        // Fetch updated booking and driver data
         const updatedBookingSnapshot = await bookingRef.get();
         const updatedBooking = updatedBookingSnapshot.data();
 
@@ -365,7 +369,6 @@ export const assignDriverToBooking = async (req, res) => {
         const userSnapshot = await userRef.get();
         const user = userSnapshot.data();
 
-        // Notify user and driver about driver assignment
         wss.clients.forEach((client) => {
             if(client.userId === updatedBooking.userId){
                 sendDataToClient(client, {
@@ -390,21 +393,27 @@ export const assignDriverToBooking = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Driver selected and booking confirmed successfully!",
+            message: "Booking confirmed successfully!",
         });
+
     } catch (error) {
         console.error("Error in assigning driver to booking:", error);
         return res.status(500).json({
             success: false,
             message: "Error in assigning driver to booking.",
-            error: error.message || error,
         });
     }
 };
 
-// Cancel Booking
 export const cancelBooking = async (req, res) => {
     const { bookingId, reason } = req.body;
+
+    if(!bookingId){
+        return res.status(400).json({
+            success: false,
+            message: "bookingId is required"
+        })
+    }
 
     try {
         const bookingRef = db.collection('bookings').doc(bookingId);
@@ -422,6 +431,7 @@ export const cancelBooking = async (req, res) => {
         });
 
         const booking = bookingSnapshot.data();
+
         if (booking.driverId) {
             const driverRef = db.collection('drivers').doc(booking.driverId);
             await driverRef.update({
@@ -440,7 +450,8 @@ export const cancelBooking = async (req, res) => {
             });
         }
 
-        // Notify user about booking cancellation
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
 
         wss.clients.forEach((client) => {
             if(client.userId === booking.userId){
@@ -451,20 +462,26 @@ export const cancelBooking = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Booking cancelled successfully.",
+            booking: updatedBooking
         });
     } catch (error) {
         console.error("Error in cancelling booking:", error);
         return res.status(500).json({
             success: false,
             message: "Error in cancelling booking.",
-            error: error.message || error,
         });
     }
 };
 
-// Driver at Pickup Location
 export const driverAtPickupLocation = async (req, res) => {
     const { bookingId } = req.body;
+
+    if(!bookingId){
+        return res.status(400).json({
+            success: false,
+            message: "bookingId is required"
+        })
+    }
 
     try {
         const bookingRef = db.collection('bookings').doc(bookingId);
@@ -473,7 +490,7 @@ export const driverAtPickupLocation = async (req, res) => {
         if (!bookingSnapshot.exists || bookingSnapshot.data().status !== 'confirmed') {
             return res.status(404).json({
                 success: false,
-                message: "Invalid booking or booking not in confirmed status.",
+                message: "Invalid booking or booking not confirmed.",
             });
         }
 
@@ -481,12 +498,12 @@ export const driverAtPickupLocation = async (req, res) => {
             driverArrivedAtPickup: true
         });
 
-        // Notify user about driver arrival
-        const booking = bookingSnapshot.data();
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
 
         wss.clients.forEach((client) => {
-            if(client.userId === booking.userId){
-                sendDataToClient(client, { type: 'driverArrived', message: "Your driver has arrived at pickup Location", booking: JSON.stringify(booking)});
+            if(client.userId === updatedBooking.userId){
+                sendDataToClient(client, { type: 'driverArrived', message: "Your driver has arrived at pickup Location", booking: JSON.stringify(updatedBooking)});
             }
         })
 
@@ -499,15 +516,20 @@ export const driverAtPickupLocation = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in notifying driver arrival at pickup location.",
-            error: error.message || error,
         });
     }
 };
 
-// Start Ride
 export const startRide = async (req, res) => {
 
     const { bookingId } = req.body;
+
+    if(!bookingId){
+        return res.status(400).json({
+            success: false,
+            message: "bookingId is required"
+        })
+    }
 
     try {
         const bookingRef = db.collection('bookings').doc(bookingId);
@@ -524,12 +546,12 @@ export const startRide = async (req, res) => {
             status: 'ongoing'
         });
 
-        // Notify user about ride start
-        const booking = bookingSnapshot.data();
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
 
         wss.clients.forEach((client) => {
-            if(client.userId === booking.userId){
-                sendDataToClient(client, { type: 'rideStarted', message: "You are now on the way", booking: JSON.stringify(booking) });
+            if(client.userId === updatedBooking.userId){
+                sendDataToClient(client, { type: 'rideStarted', message: "You are now on the way", booking: JSON.stringify(updatedBooking) });
             }
         })
 
@@ -537,20 +559,26 @@ export const startRide = async (req, res) => {
             success: true,
             message: "Ride has started.",
         });
+
     } catch (error) {
         console.error("Error in starting the ride:", error);
         return res.status(500).json({
             success: false,
             message: "Error in starting the ride.",
-            error: error.message || error,
         });
     }
 };
 
-// End Ride
 export const endRide = async (req, res) => {
 
     const { bookingId } = req.body;
+
+    if(!bookingId){
+        return res.status(400).json({
+            success: false,
+            message: "bookingId is required"
+        })
+    }
 
     try {
         const bookingRef = db.collection('bookings').doc(bookingId);
@@ -569,12 +597,12 @@ export const endRide = async (req, res) => {
             rated: false,
         });
 
-        // Notify user about ride end
-        const booking = bookingSnapshot.data();
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
 
         wss.clients.forEach((client) => {
-            if(client.userId === booking.userId){
-                sendDataToClient(client, { type: 'rideEnded', message: "You have arrived at your destination, remember to rate your driver!", booking: JSON.stringify(booking) });
+            if(client.userId === updatedBooking.userId){
+                sendDataToClient(client, { type: 'rideEnded', message: "You have arrived at your destination, remember to rate your driver!", booking: JSON.stringify(updatedBooking) });
             }
         })
 
@@ -588,7 +616,6 @@ export const endRide = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in ending the ride.",
-            error: error.message || error,
         });
     }
 };

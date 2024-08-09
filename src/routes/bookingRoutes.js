@@ -16,8 +16,8 @@ const router = express.Router();
 router.use(verifyUser);
 
 // User post routes
-router.post("/book-request", passengerBookingRequest);
-router.post("/cancel-booking", cancelBooking);
+router.post("/make-book-request", passengerBookingRequest);
+router.post("/cancel-booking-request", cancelBooking);
 router.post("/search-driver", searchDriversForBooking);
 router.post("/select-driver", assignDriverToBooking);
 
