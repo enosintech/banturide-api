@@ -25,7 +25,7 @@ wss.on("connection", (ws, request) => {
     const query = url.parse(request.url, true).query;
     const userId = query.userId;
 
-    if(userId){
+    if(userId !== "undefined"){
         ws.userId = userId;
         console.log(`Client Connected with client ID: ${userId}`);
     } else {
