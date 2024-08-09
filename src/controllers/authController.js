@@ -34,6 +34,8 @@ export const registerPassengerController = async (req, res) => {
                 lastname,
                 email,
                 gender,
+                driverShouldCall: false,
+                notificationsEnabled: true,
                 avatar: null,
                 role: 'user',
                 createdAt: new Date().toISOString()
