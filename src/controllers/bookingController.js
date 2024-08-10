@@ -63,7 +63,7 @@ export const passengerBookingRequest = async (req, res) => {
 
         wss.clients.forEach((client) => {
             if (client.userId === user.uid) {
-                sendDataToClient(client, { type: 'requestReceived', message: "Booking Request Received Successfully!" });
+                sendDataToClient(client, { notificationId: `${bookingId + "01"}`, type: 'requestReceived', message: "Booking Request Received Successfully!" });
             }
         });
 
@@ -193,6 +193,7 @@ export const searchDriversForBooking = async (req, res) => {
                                 if (client.userId === booking.userId) {
                                     sendDataToClient(client, {
                                         type: 'driverFound',
+                                        notificationId: driverId,
                                         message: "A driver has been found initially and is reserved for 30 seconds",
                                         driver: JSON.stringify(driverData),
                                         distance: distance
@@ -249,7 +250,8 @@ export const searchDriversForBooking = async (req, res) => {
                                         if (client.userId === booking.userId) {
                                             sendDataToClient(client, {
                                                 type: 'driverFound',
-                                                message: "A driver has been found in real time and is reserved for 30 seconds to be picked",
+                                                notificationId: driverId,
+                                                message: "A driver has been found and is reserved for 30 seconds",
                                                 driver: JSON.stringify(driverData),
                                                 distance: distance,
                                             });
@@ -278,13 +280,13 @@ export const searchDriversForBooking = async (req, res) => {
 
                     wss.clients.forEach((client) => {
                         if (client.userId === booking.userId) {
-                            sendDataToClient(client, { type: 'searchComplete', message: "The booking has been confirmed. Search stopped." });
+                            sendDataToClient(client, { type: 'bookingConfirmed', message: "Your booking has been confirmed." });
                         }
                     });
 
                     res.status(200).json({
                         success: true,
-                        message: "Booking confirmed. Search has been stopped.",
+                        message: "Booking confirmed and Search has now stopped",
                     });
 
                     return;
@@ -299,7 +301,7 @@ export const searchDriversForBooking = async (req, res) => {
             if (reservedDrivers.size === 0) {
                 wss.clients.forEach((client) => {
                     if (client.userId === booking.userId) {
-                        sendDataToClient(client, { type: 'driversNotFoundOnTime', message: "No drivers found within the specified time" });
+                        sendDataToClient(client, { notificationId: Math.random() + `${bookingId}`, type: 'driversNotFoundOnTime', message: "No drivers found within the specified time" });
                     }
                 });
                 res.status(404).json({ success: false, message: "No drivers found within the time limit." });
@@ -373,6 +375,7 @@ export const assignDriverToBooking = async (req, res) => {
             if(client.userId === updatedBooking.userId){
                 sendDataToClient(client, {
                     type: 'driverAssigned',
+                    notificationId: `${bookingId + "03"}`,
                     message: "You have a new driver",
                     booking: JSON.stringify(updatedBooking),
                     driver: JSON.stringify(updatedDriver)
@@ -384,6 +387,7 @@ export const assignDriverToBooking = async (req, res) => {
             if(client.userId === driverId){
                 sendDataToClient(client, {
                     type: 'driverAssigned',
+                    notificationId: `${bookingId + "03"}`,
                     message: "You have a new customer",
                     booking: JSON.stringify(updatedBooking),
                     user: JSON.stringify(user)
@@ -445,7 +449,7 @@ export const cancelBooking = async (req, res) => {
             // Notify driver about booking cancellation
             wss.clients.forEach((client) => {
                 if(client.userId === booking.driverId){
-                    sendDataToClient(client, { type: 'bookingCancelled', message: "Customer has cancelled the booking", reason: reason });
+                    sendDataToClient(client, { notificationId: `${bookingId + "04"}`, type: 'bookingCancelled', message: "Customer has cancelled the booking", reason: reason });
                 }
             });
         }
@@ -455,7 +459,7 @@ export const cancelBooking = async (req, res) => {
 
         wss.clients.forEach((client) => {
             if(client.userId === booking.userId){
-                sendDataToClient(client, { type: 'bookingCancelled', message: "Your booking has been cancelled successfully" });
+                sendDataToClient(client, { notificationId: `${bookingId + "04"}`, type: 'bookingCancelled', message: "Your booking has been cancelled successfully" });
             }
         });
 
@@ -503,7 +507,7 @@ export const driverAtPickupLocation = async (req, res) => {
 
         wss.clients.forEach((client) => {
             if(client.userId === updatedBooking.userId){
-                sendDataToClient(client, { type: 'driverArrived', message: "Your driver has arrived at pickup Location", booking: JSON.stringify(updatedBooking)});
+                sendDataToClient(client, { notificationId: `${bookingId + "06"}`, type: 'driverArrived', message: "Your driver has arrived at pickup Location", booking: JSON.stringify(updatedBooking)});
             }
         })
 
@@ -551,7 +555,7 @@ export const startRide = async (req, res) => {
 
         wss.clients.forEach((client) => {
             if(client.userId === updatedBooking.userId){
-                sendDataToClient(client, { type: 'rideStarted', message: "You are now on the way", booking: JSON.stringify(updatedBooking) });
+                sendDataToClient(client, { notificationId: `${bookingId + "08"}`, type: 'rideStarted', message: "You are now on the way", booking: JSON.stringify(updatedBooking) });
             }
         })
 
@@ -602,7 +606,7 @@ export const endRide = async (req, res) => {
 
         wss.clients.forEach((client) => {
             if(client.userId === updatedBooking.userId){
-                sendDataToClient(client, { type: 'rideEnded', message: "You have arrived at your destination, remember to rate your driver!", booking: JSON.stringify(updatedBooking) });
+                sendDataToClient(client, { notificationId: `${bookingId + "10"}`, type: 'rideEnded', message: "You have arrived at your destination, remember to rate your driver!", booking: JSON.stringify(updatedBooking) });
             }
         })
 
