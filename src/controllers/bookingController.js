@@ -288,8 +288,6 @@ export const searchDriversForBooking = async (req, res) => {
                         success: true,
                         message: "Booking confirmed and Search has now stopped",
                     });
-
-                    return;
                 }
             });
 
@@ -439,7 +437,8 @@ export const cancelBooking = async (req, res) => {
         if (booking.driverId) {
             const driverRef = db.collection('drivers').doc(booking.driverId);
             await driverRef.update({
-                status: 'available'
+                driverStatus: 'available',
+                reservedBy: null,
             });
 
             await bookingRef.update({
