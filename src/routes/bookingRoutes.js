@@ -8,6 +8,9 @@ import {
     driverAtPickupLocation,
     startRide,
     endRide,
+    addStop,
+    changeDestination,
+    findNewDriver,
 } from "../controllers/bookingController.js";
 import { verifyUser } from "../middleware/index.js";
 
@@ -20,6 +23,9 @@ router.post("/make-book-request", passengerBookingRequest);
 router.post("/cancel-booking-request", cancelBooking);
 router.post("/search-driver", searchDriversForBooking);
 router.post("/select-driver", assignDriverToBooking);
+router.post("/add-stop", addStop);
+router.post("/update-destination", changeDestination);
+router.post("/find-new-driver", findNewDriver);
 
 // Driver post routes
 router.post("/driver-at-pickup-location", driverAtPickupLocation);

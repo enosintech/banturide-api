@@ -4,7 +4,6 @@ import { db } from "../config/firebase.js";
 
 import { sendDataToClient, wss } from "../../server.js";
 
-// Add a Review
 export const addReview = async (req, res) => {
 
     const user = req.user;
@@ -80,6 +79,42 @@ export const addReview = async (req, res) => {
     } catch (error) {
         console.error("Error adding review:", error);
         res.status(500).json({ error: error.message });
+    }
+};
+
+export const reportDriver = async (req, res) => {
+    const user = req.user;
+
+    if (!user) {
+        return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const { bookingId, driverId, reason, comment } = req.body;
+
+    if(!bookingId || !driverId || !reason ) {
+        return res.status(400).json({ success: false, message: "Booking ID, Driver Id, and reason for reporting are required"});
+    }
+
+    try {
+
+        const report = {
+            userID: user.uid,
+            bookingId,
+            driverId,
+            reason,
+            comment,
+            createdAt: FieldValue.serverTimestamp()
+        }
+
+        const reportRef = db.collection("reports").doc();
+        
+        await reportRef.set(report);
+
+        return res.status(201).json({ success: false, message: "Driver Reported Successfully"})
+
+    } catch (error) {
+        console.error("Error Reporting Driver", error);
+        return res.status(400).json({ success: false, message: "Error Reporting Driver"})
     }
 };
 

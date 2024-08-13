@@ -29,6 +29,72 @@ const deg2rad = (deg) => {
   return deg * (Math.PI / 180);
 };
 
+export const updatePaymentMethod = async (req, res) => {
+
+  const user = req.user;
+
+  if(!user) {
+    return res.status(403).json({ error: "Unauthorized"})
+  }
+
+  const { bookingId, paymentMethod } = req.body; 
+
+  try {
+    const bookingRef = db.collection('bookings').doc(bookingId);
+
+    const bookingSnapshot = await bookingRef.get();
+
+    if (!bookingSnapshot.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found"
+      })
+    }
+
+    await bookingRef.update({
+      paymentMethod: paymentMethod
+    })
+
+    const updatedBookingSnapshot = await bookingRef.get();
+    const updatedBooking = updatedBookingSnapshot.data();
+
+    wss.clients.forEach((client) => {
+      if(client.userId === updatedBooking.userId){
+        sendDataToClient(client, {
+          type: "paymentChanged",
+          notificationId: `${bookingId + "12"}`,
+          message: "Payment Method updated",
+          booking: JSON.stringify(updatedBooking)
+        })
+      }
+    })
+
+    wss.clients.forEach((client) => {
+      if(client.userId === updatedBooking.driverId){
+        sendDataToClient(client, {
+          type: "paymentChanged",
+          notificationId: `${bookingId + "12"}`,
+          message: "Payment Method updated",
+          booking: JSON.stringify(updatedBooking)
+        })
+      }
+    })
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment method updated successfully"
+    })
+
+  } catch (error) {
+    console.log("Error updating payment method: ", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error updating payment method"
+    })
+  }
+
+};
+
 // Controller to handle confirming payment and marking the ride as successful
 export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
 

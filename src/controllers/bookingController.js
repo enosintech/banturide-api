@@ -407,6 +407,245 @@ export const assignDriverToBooking = async (req, res) => {
     }
 };
 
+export const addStop = async (req, res) => {
+
+    const { bookingId, thirdStopLatitude, thirdStopLongitude, price } = req.body;
+
+    if ( !bookingId || !thirdStopLatitude || !thirdStopLongitude || !price ) {
+        return res.status(400).json({
+            success: false,
+            message: "booking Id, third stop locations and price are required.",
+        });
+    }
+
+    try {
+        const bookingRef = db.collection("bookings").doc(bookingId);
+        const bookingSnapshot = await bookingRef.get();
+
+        if (!bookingSnapshot.exists) {
+            return res.status(404).json({ success: false, message: "Booking not found." });
+        }
+
+        const booking = bookingSnapshot.data();
+
+        if(booking.hasThirdStop){
+            return res.status(400).json({
+                success: false,
+                message: "Booking already has an extra stop"
+            })
+        }
+
+        const distance = getDistanceFromLatLonInKm(
+            booking.driverCurrentLocation[0],
+            booking.driverCurrentLocation[1],
+            booking.dropOffLocation.latitude,
+            booking.dropOffLocation.longitude
+        );
+
+        if( distance < 5 ){
+            return res.status(400).json({
+                success: false,
+                message: "You are close to the drop off location and cannot add a stop"
+            })
+        }
+
+        await bookingRef.update({
+            hasThirdStop: true,
+            thirdStopLocation : { latitude: thirdStopLatitude, longitude: thirdStopLongitude },
+            price
+        })
+
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
+
+        wss.clients.forEach((client) => {
+            if(client.userId === updatedBooking.userId) {
+                sendDataToClient(client, {
+                    type: "StopAdded",
+                    notificationId: `${bookingId + "30"}`,
+                    message: "A Stop has been added to your current trip",
+                    booking: JSON.stringify(updatedBooking),
+                })
+            }
+        })
+
+        wss.clients.forEach((client) => {
+            if(client.userId === updatedBooking.driverId) {
+                sendDataToClient(client, {
+                    type: "StopAdded",
+                    notificationId: `${bookingId + "30"}`,
+                    message: "A Stop has been added to your current trip",
+                    booking: JSON.stringify(updatedBooking),
+                })
+            }
+        })
+
+        return res.status(200).json({
+            success: true,
+            message: "Stop added successfully"
+        })
+
+    } catch (error) {
+        console.error("Error adding a third Stop", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error adding a third stop."
+        })
+    }
+
+};
+
+export const changeDestination = async (req, res) => {
+
+    const { bookingId, dropOffLatitude, dropOffLongitude } = req.body;
+
+    if ( !bookingId || !dropOffLatitude || !dropOffLongitude ) {
+        return res.status(400).json({
+            success: false,
+            message: "booking Id and drop-off locations are required.",
+        });
+    }
+
+    try {
+
+        const bookingRef = db.collection("bookings").doc(bookingId);
+        const bookingSnapshot = await bookingRef.get();
+
+        if (!bookingSnapshot.exists) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found.",
+            });
+        }
+
+        const booking = bookingSnapshot.data();
+        const distance = getDistanceFromLatLonInKm(
+            booking.driverCurrentLocation[0],
+            booking.driverCurrentLocation[1],
+            booking.dropOffLocation.latitude,
+            booking.dropOffLocation.longitude
+        );
+
+        if(distance < 5) {
+            return res.status(400).json({
+                success: false,
+                message: "You are close to the drop off location and your destination cannot be changed"
+            })
+        }
+
+        await bookingRef.update({
+            dropOffLocation: {latitude: dropOffLatitude, longitude: dropOffLongitude },
+        })
+
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
+
+        wss.clients.forEach((client) => {
+            if(client.userId === updatedBooking.userId) {
+                sendDataToClient(client, {
+                    type: "dropOffLocationUpdated",
+                    notificationId: `${bookingId + "20"}`,
+                    message: "Your drop off location has been changed",
+                    booking: JSON.stringify(updatedBooking),
+                })
+            }
+        })
+
+        wss.clients.forEach((client) => {
+            if(client.userId === updatedBooking.driverId) {
+                sendDataToClient(client, {
+                    type: "dropOffLocationUpdated",
+                    notificationId: `${bookingId + "20"}`,
+                    message: "Your current booking destination has been changed",
+                    booking: JSON.stringify(updatedBooking),
+                })
+            }
+        })
+
+        return res.status(200).json({
+            success: true,
+            message: "Drop Off location updated successfully"
+        })
+
+    } catch (error) {
+        console.error("Error changing destination: ", error);
+        return res.status(500).json({
+            success: false,
+            messsage: "Error changing destination"
+        })
+    }
+};
+
+export const findNewDriver = async (req, res) => {
+    const { bookingId, driverId, reason } = req.body;
+    
+    if(!bookingId || !driverId ) {
+        return res.status(400).json({
+            success: false,
+            message: "booking Id and driver Id are required"
+        })
+    }
+
+    try {
+
+        const bookingRef = db.collection('bookings').doc(bookingId);
+        const driverRef = db.collection('driver').doc(bookingId);
+
+        const bookingSnapshot = await bookingRef.get();
+        const driverSnapshot = await driverRef.get();
+
+        if(!bookingSnapshot.exists || !driverSnapshot.exists) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking or driver not found"
+            })
+        }
+
+        await bookingRef.update({
+            driverId: null,
+            status: "pending",
+            driverCurrentLocation: null,
+        })
+
+        await driverRef.update({
+            driverStatus: "available",
+            reservedBy: null
+        })
+
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
+
+        wss.clients.forEach((client) => {
+            if(client.userId === updatedBooking.userId){
+                sendDataToClient(client, {
+                    type: 'bookingPending',
+                    notificationId: `${bookingId + "03"}`,
+                    message: "A new driver will be found shortly",
+                    booking: JSON.stringify(updatedBooking)
+                });
+            }
+        });
+        
+        wss.clients.forEach((client) => {
+            if(client.userId === driverId){
+                sendDataToClient(client, { notificationId: `${bookingId + "04"}`, type: 'bookingCancelled', message: "Customer has cancelled the booking", reason: reason });
+            }
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: "Booking pending new driver",
+        });
+
+    } catch (error) {
+        console.error("Error in cancelling current driver and finding a new one: ", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error in cancelling current driver and finding a new one"
+        })
+    }
+};
+
 export const cancelBooking = async (req, res) => {
     const { bookingId, reason } = req.body;
 

@@ -10,6 +10,7 @@ import cloudinary from "../config/cloudinary.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, '..', 'uploads');
+
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
@@ -68,6 +69,7 @@ export const getUserProfile = async (req, res) => {
 
 // Upload profile picture
 export const uploadProfilePicture = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -93,10 +95,12 @@ export const uploadProfilePicture = async (req, res) => {
             res.status(500).json({ error: "Error when obtaining profile details." });
         }
     });
+    
 };
 
 // Remove profile picture
 export const removeProfilePicture = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -124,6 +128,7 @@ export const removeProfilePicture = async (req, res) => {
 
 // Edit user's name
 export const editUserName = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -141,10 +146,12 @@ export const editUserName = async (req, res) => {
         console.log("Error editing username", error)
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // Toggle notifications for user
 export const toggleNotifications = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -161,10 +168,12 @@ export const toggleNotifications = async (req, res) => {
         console.log("Error toggling notifications", error)
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // Toggle driver should call
 export const toggleDriverShouldCall = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -181,12 +190,14 @@ export const toggleDriverShouldCall = async (req, res) => {
         console.log("Error toggling driver should call", error)
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // driver controllers 
 
 // Edit driver profile
 export const editDriverProfile = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -213,10 +224,12 @@ export const editDriverProfile = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // Toggle driver availability
 export const toggleDriverAvailability = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -242,10 +255,12 @@ export const toggleDriverAvailability = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // Get all driver information
 export const getDriverInfo = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -271,11 +286,13 @@ export const getDriverInfo = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 
 // Get Total Earnings
 export const getTotalEarnings = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -298,10 +315,12 @@ export const getTotalEarnings = async (req, res) => {
         console.error("Error getting total earnings:", error);
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // Update Driver Status (e.g., set status to 'online' or 'offline')
 export const updateDriverStatus = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -321,10 +340,12 @@ export const updateDriverStatus = async (req, res) => {
         console.error("Error updating driver status:", error);
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // Get Driver Statistics
 export const getDriverStatistics = async (req, res) => {
+
     const user = req.user;
 
     if (!user) {
@@ -339,7 +360,6 @@ export const getDriverStatistics = async (req, res) => {
             return res.status(404).json({ error: "Driver not found" });
         }
 
-        const driverData = driverDoc.data();
         const totalEarnings = await getTotalEarningsInternal({ currentUser: user }, res);
         const completedRides = await db.collection('bookings').where('driverId', '==', user.uid).where('status', '==', 'completed').get();
 
@@ -353,10 +373,12 @@ export const getDriverStatistics = async (req, res) => {
         console.error("Error getting driver statistics:", error);
         res.status(500).json({ error: "Error when obtaining profile details." });
     }
+
 };
 
 // Helper function for getting total earnings (used internally)
 const getTotalEarningsInternal = async (req, res) => {
+
     const user = req.user;
 
     try {
@@ -371,10 +393,12 @@ const getTotalEarningsInternal = async (req, res) => {
         });
 
         return { totalEarnings };
+
     } catch (error) {
         console.error("Error getting total earnings:", error);
         throw new Error("Error when obtaining profile details.");
     }
+
 };
 
 
