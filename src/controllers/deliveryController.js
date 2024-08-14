@@ -79,15 +79,9 @@ export const requestDelivery = async (req, res) => {
     }
 };
 
-// Endpoint: Search Drivers for Delivery (Real-time)
+// Endpoint: Search and Assign Driver for Delivery
 export const searchDriversForDelivery = async (req, res) => {
     const { deliveryId } = req.body;
-    const reservedDrivers = new Map();
-    const notifiedDrivers = new Set();
-
-    let searchTimeout;
-    let deliveryStatusUnsubscribe;
-    let driverStatusUnsubscribe;
 
     try {
         // Fetch delivery data
@@ -104,74 +98,17 @@ export const searchDriversForDelivery = async (req, res) => {
             }
         });
 
-        // Function to reserve a driver
-        const reserveDriver = async (driverId, clientId) => {
-            try {
-                await db.runTransaction(async (transaction) => {
-                    const driverRef = db.collection('drivers').doc(driverId);
-                    const driverDoc = await transaction.get(driverRef);
+        // Search for the first available driver that meets the criteria
+        const availableDriversSnapshot = await db.collection('drivers')
+            .where('driverStatus', '==', 'available')
+            .where('driverDelivery', '==', true)
+            .where('vehicleType', '==', delivery.vehicleType)
+            .get();
 
-                    if (!driverDoc.exists) {
-                        console.log('Driver does not exist');
-                        return;
-                    }
+        let driverAssigned = false;
 
-                    // Reserve the driver for the client
-                    transaction.update(driverRef, {
-                        driverStatus: 'reserved',
-                        reservedBy: clientId,
-                        reservedUntil: Date.now() + 30000,
-                        driverDelivery: false // Mark driver as not available for other deliveries
-                    });
-
-                    reservedDrivers.set(driverId, { reservedBy: clientId, reservedUntil: Date.now() + 30000 });
-                });
-
-                // Notify client about the reserved driver
-                const reservedDriverData = await db.collection('drivers').doc(driverId).get();
-                const driverData = reservedDriverData.data();
-
-                wss.clients.forEach((client) => {
-                    if (client.userId === clientId) {
-                        sendDataToClient(client, {
-                            type: 'driverFound',
-                            notificationId: driverId,
-                            message: "A driver has been found and is reserved for 30 seconds",
-                            driver: JSON.stringify(driverData),
-                        });
-                    }
-                });
-
-                // Set a timeout to revert the driver’s status if not picked
-                setTimeout(async () => {
-                    const currentDriverDoc = await db.collection('drivers').doc(driverId).get();
-                    if (currentDriverDoc.exists && currentDriverDoc.data().driverStatus === 'reserved' && reservedDrivers.get(driverId)?.reservedBy === clientId) {
-                        await db.collection('drivers').doc(driverId).update({
-                            driverStatus: 'available',
-                            reservedBy: null,
-                            reservedUntil: null,
-                            driverDelivery: true // Mark driver as available again
-                        });
-
-                        reservedDrivers.delete(driverId);
-                        notifiedDrivers.delete(driverId);
-                    }
-                }, 30000);
-
-            } catch (error) {
-                console.error("Error during driver reservation:", error);
-            }
-        };
-
-        // Initial search for available drivers
-        const searchDrivers = async () => {
-            const availableDriversSnapshot = await db.collection('drivers')
-                .where('driverStatus', '==', 'available')
-                .where('driverDelivery', '==', true)
-                .where('vehicleType', '==', delivery.vehicleType)
-                .get();
-
-            availableDriversSnapshot.forEach(async doc => {
+        availableDriversSnapshot.forEach(async doc => {
+            if (!driverAssigned) {
                 const driverData = doc.data();
                 const distance = getDistanceFromLatLonInKm(
                     delivery.pickUpLocation.latitude,
@@ -183,76 +120,56 @@ export const searchDriversForDelivery = async (req, res) => {
                 if (distance <= 10) { // Within 10 miles
                     const driverId = doc.id;
 
-                    // Check if the driver is already reserved
-                    if (reservedDrivers.has(driverId)) return;
+                    // Reserve and assign the driver to the delivery
+                    await db.runTransaction(async (transaction) => {
+                        const driverRef = db.collection('drivers').doc(driverId);
 
-                    // Reserve the driver for the client
-                    await reserveDriver(driverId, delivery.userId);
-                }
-            });
-        };
+                        transaction.update(driverRef, {
+                            driverStatus: 'reserved',
+                            reservedBy: delivery.userId,
+                            reservedUntil: Date.now() + 30000,
+                            driverDelivery: false // Mark driver as not available for other deliveries
+                        });
 
-        // Start the initial search
-        await searchDrivers();
+                        const deliveryRef = db.collection('delivery').doc(deliveryId);
+                        transaction.update(deliveryRef, {
+                            driverId: driverId,
+                            status: 'ongoing'
+                        });
 
-        // Set up real-time listener for changes in driver status
-        driverStatusUnsubscribe = db.collection('drivers')
-            .where('driverStatus', '==', 'available')
-            .where('driverDelivery', '==', true)
-            .where('vehicleType', '==', delivery.vehicleType)
-            .onSnapshot(snapshot => {
-                snapshot.docChanges().forEach(async (change) => {
-                    if (change.type === "added" || change.type === "modified") {
-                        const driverData = change.doc.data();
-                        const distance = getDistanceFromLatLonInKm(
-                            delivery.pickUpLocation.latitude,
-                            delivery.pickUpLocation.longitude,
-                            driverData.location.coordinates[0],
-                            driverData.location.coordinates[1]
-                        );
+                        driverAssigned = true;
+                    });
 
-                        if (distance <= 10) { // Within 10 miles
-                            const driverId = change.doc.id;
-
-                            // Check if the driver is already reserved
-                            if (reservedDrivers.has(driverId)) return;
-
-                            // Reserve the driver for the client
-                            await reserveDriver(driverId, delivery.userId);
+                    // Notify the client that a driver has been assigned
+                    wss.clients.forEach((client) => {
+                        if (client.userId === delivery.userId) {
+                            sendDataToClient(client, {
+                                type: 'driverAssigned',
+                                notificationId: driverId,
+                                message: "A driver has been assigned to your delivery",
+                                driver: JSON.stringify(driverData),
+                            });
                         }
-                    }
-                });
-            });
+                    });
 
-        // Handle timeout after 2 minutes
-        searchTimeout = setTimeout(async () => {
-            if (driverStatusUnsubscribe) driverStatusUnsubscribe();
-            if (searchTimeout) clearTimeout(searchTimeout);
-
-            if (reservedDrivers.size === 0) {
-                wss.clients.forEach((client) => {
-                    if (client.userId === delivery.userId) {
-                        sendDataToClient(client, { type: 'driversNotFoundOnTime', message: "No drivers found within the specified time" });
-                    }
-                });
-                res.status(404).json({ success: false, message: "No drivers found within the time limit." });
-            } else {
-                wss.clients.forEach((client) => {
-                    if (client.userId === delivery.userId) {
-                        sendDataToClient(client, { type: 'searchComplete', message: "Drivers were found and the search is complete" });
-                    }
-                });
-                res.status(200).json({
-                    success: true,
-                    message: "Drivers were found and the search is complete.",
-                });
+                    res.status(200).json({
+                        success: true,
+                        message: "Driver found and assigned successfully.",
+                        driverId: driverId
+                    });
+                }
             }
-        }, 120000);
+        });
+
+        if (!driverAssigned) {
+            res.status(404).json({
+                success: false,
+                message: "No available drivers found within the search criteria."
+            });
+        }
 
     } catch (error) {
         console.error("Error in searching drivers for delivery:", error);
-        if (searchTimeout) clearTimeout(searchTimeout); // Clear timeout in case of error
-        if (driverStatusUnsubscribe) driverStatusUnsubscribe(); // Clear Firestore listener
         return res.status(500).json({
             success: false,
             message: "Error in processing your request.",
@@ -260,7 +177,7 @@ export const searchDriversForDelivery = async (req, res) => {
     }
 };
 
-// Endpoint: Assign Delivery Driver
+// Endpoint: Assign Delivery Driver (Manual Assignment, if needed)
 export const assignDeliveryDriver = async (req, res) => {
     const { deliveryId, driverId } = req.body;
 
