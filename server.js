@@ -12,6 +12,7 @@ import paymentsRoutes from "./src/routes/paymentsRoutes.js";
 import profileRoutes from "./src/routes/profileRoutes.js";
 import favoritesRoutes from './src/routes/favoritesRoutes.js';
 import reviewRoutes from "./src/routes/reviewRoutes.js";
+import deliveryRoutes from "./src/routes/deliveryRoutes.js"
 
 dotenv.config();
 
@@ -83,6 +84,7 @@ app.use("/payment", paymentsRoutes);
 app.use("/profile", profileRoutes);
 app.use("/favorites", favoritesRoutes);
 app.use("/reviews", reviewRoutes);
+app.use("/delivery", deliveryRoutes)
 
 server.listen(PORT, () => {
     console.log(`Server is running on PORT ${PORT}`)
