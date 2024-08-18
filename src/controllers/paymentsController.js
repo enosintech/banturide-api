@@ -59,17 +59,6 @@ export const updatePaymentMethod = async (req, res) => {
     const updatedBooking = updatedBookingSnapshot.data();
 
     wss.clients.forEach((client) => {
-      if(client.userId === updatedBooking.userId){
-        sendDataToClient(client, {
-          type: "paymentChanged",
-          notificationId: `${bookingId + "12"}`,
-          message: "Payment Method updated",
-          booking: JSON.stringify(updatedBooking)
-        })
-      }
-    })
-
-    wss.clients.forEach((client) => {
       if(client.userId === updatedBooking.driverId){
         sendDataToClient(client, {
           type: "paymentChanged",
@@ -82,7 +71,8 @@ export const updatePaymentMethod = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Payment method updated successfully"
+      message: "Payment method updated successfully",
+      booking: JSON.stringify(updatedBooking)
     })
 
   } catch (error) {
