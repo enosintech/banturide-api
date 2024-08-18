@@ -609,22 +609,12 @@ export const findNewDriver = async (req, res) => {
 
         await driverRef.update({
             driverStatus: "available",
-            reservedBy: null
+            reservedBy: null,
+            reservedUntil: null,
         })
 
         const updatedBookingSnapshot = await bookingRef.get();
         const updatedBooking = updatedBookingSnapshot.data();
-
-        wss.clients.forEach((client) => {
-            if(client.userId === updatedBooking.userId){
-                sendDataToClient(client, {
-                    type: 'bookingPending',
-                    notificationId: `${bookingId + "03"}`,
-                    message: "A new driver will be found shortly",
-                    booking: JSON.stringify(updatedBooking)
-                });
-            }
-        });
         
         wss.clients.forEach((client) => {
             if(client.userId === driverId){
@@ -635,6 +625,7 @@ export const findNewDriver = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Booking pending new driver",
+            booking: JSON.stringify(updatedBooking),
         });
 
     } catch (error) {
