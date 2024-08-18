@@ -589,7 +589,7 @@ export const findNewDriver = async (req, res) => {
     try {
 
         const bookingRef = db.collection('bookings').doc(bookingId);
-        const driverRef = db.collection('driver').doc(bookingId);
+        const driverRef = db.collection('drivers').doc(bookingId);
 
         const bookingSnapshot = await bookingRef.get();
         const driverSnapshot = await driverRef.get();
