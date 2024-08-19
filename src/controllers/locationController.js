@@ -94,7 +94,17 @@ export const updateBookingLocation = async (req, res) => {
 
             if (distance < 1) {
                 stopListening(); 
-                return res.status(200).json({ success: true, message: "You are close to your destination" });
+                
+                wss.clients.forEach((client) => {
+                    if (client.userId === booking.userId) {
+                        sendDataToClient(client, {
+                            type: 'nearDestination',
+                            message: `You are ${distance} KM to your destination and location has stopped updating`,
+                        });
+                    }
+                });
+
+                return;
             }
 
             await bookingRef.update({
