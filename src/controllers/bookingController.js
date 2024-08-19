@@ -272,38 +272,35 @@ export const searchDriversForBooking = async (req, res) => {
         bookingStatusUnsubscribe = db.collection('bookings').doc(bookingId)
             .onSnapshot(async (doc) => {
                 const bookingData = doc.data();
-                if (bookingData.status === 'confirmed' || bookingData.status === "cancelled") {
+                if (bookingData.status === 'confirmed') {
                     // Stop searching
                     if (searchTimeout) clearTimeout(searchTimeout);
                     if (driverStatusUnsubscribe) driverStatusUnsubscribe();
                     if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
 
-                    if(bookingData.status === "confirmed") {
+                    wss.clients.forEach((client) => {
+                        if (client.userId === booking.userId) {
+                            sendDataToClient(client, { type: 'bookingConfirmed', message: "Your booking has been confirmed." });
+                        }
+                    });
 
-                        wss.clients.forEach((client) => {
-                            if (client.userId === booking.userId) {
-                                sendDataToClient(client, { type: 'bookingConfirmed', message: "Your booking has been confirmed." });
-                            }
-                        });
+                    res.status(200).json({
+                        success: true,
+                        message: "Booking confirmed and Search has now stopped",
+                    });
 
-                        res.status(200).json({
-                            success: true,
-                            message: "Booking confirmed and Search has now stopped",
-                        });
+                }
 
-                    } else {
-                        
-                        if (searchTimeout) clearTimeout(searchTimeout);
-                        if (driverStatusUnsubscribe) driverStatusUnsubscribe();
-                        if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
-                    
-                        res.status(200).json({
-                            success: false,
-                            message: "Booking cancelled and Search has now stopped",
-                        });
+                if(bookingData.status === "cancelled") {
+                    // Stop searching
+                    if (searchTimeout) clearTimeout(searchTimeout);
+                    if (driverStatusUnsubscribe) driverStatusUnsubscribe();
+                    if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
 
-                    }
-
+                    res.status(200).json({
+                        success: true,
+                        message: "Booking cancelled and Search has now stopped",
+                    });
                 }
             });
 
