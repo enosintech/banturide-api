@@ -57,18 +57,17 @@ export const updateDriverLocation = async (req, res) => {
 export const updateBookingLocation = async (req, res) => {
     const user = req.user;
 
-    if(!user){
-        return res.status(403).json({ error: "Unauthorized"});
+    if (!user) {
+        return res.status(403).json({ error: "Unauthorized" });
     }
 
     const { bookingId, driverId } = req.body;
 
-    try {  
+    try {
         const bookingRef = db.collection("bookings").doc(bookingId);
         const driverRef = db.collection("drivers").doc(driverId);
 
         const bookingDoc = await bookingRef.get();
-
         const booking = bookingDoc.data();
         const dropOffLocation = booking.dropOffLocation;
 
@@ -81,51 +80,59 @@ export const updateBookingLocation = async (req, res) => {
             }
         };
 
-        listener = driverRef.onSnapshot( async (snapshot) => {
-            if (snapshot.exists) {
-                const driverData = snapshot.data();
-                const driverLocation = driverData.location.coordinates; 
-
-                const distance = calculateDistance(driverLocation, dropOffLocation);
-
-                if (distance < 1) {
-                    stopListening(); 
-                    return res.status(200).json({success: true, message: "You are close to your destination"})
-                }
-
-                bookingRef.update({
-                    driverCurrentLocation: driverLocation,
-                    updatedAt: FieldValue.serverTimestamp()
-                });
-
-                const updatedBookingSnapshot = await bookingRef.get();
-                const updatedBooking = updatedBookingSnapshot.data();
-
-                wss.clients.forEach((client) => {
-                    if (client.userId === booking.userId) {
-                        sendDataToClient(client, { type: 'locationUpdated', message: "Your driver location has been updated", booking: JSON.stringify(updatedBooking) });
-                    }
-                });
-
-                return res.status(200).json({success: true, message: "Your driver location is now being updated"})
-
-            } else {
+        listener = driverRef.onSnapshot(async (snapshot) => {
+            if (!snapshot.exists) {
                 console.error(`Driver document ${driverId} does not exist`);
+                stopListening();
                 return res.status(404).json({ error: `Driver document ${driverId} does not exist` });
             }
+
+            const driverData = snapshot.data();
+            const driverLocation = driverData.location.coordinates;
+
+            const distance = calculateDistance(driverLocation, dropOffLocation);
+
+            if (distance < 1) {
+                stopListening(); 
+                return res.status(200).json({ success: true, message: "You are close to your destination" });
+            }
+
+            await bookingRef.update({
+                driverCurrentLocation: driverLocation,
+                updatedAt: FieldValue.serverTimestamp()
+            });
+
+            const updatedBookingSnapshot = await bookingRef.get();
+            const updatedBooking = updatedBookingSnapshot.data();
+
+            wss.clients.forEach((client) => {
+                if (client.userId === booking.userId) {
+                    sendDataToClient(client, {
+                        type: 'locationUpdated',
+                        message: "Your driver location has been updated",
+                        booking: JSON.stringify(updatedBooking)
+                    });
+                }
+            });
         });
 
         const handleBookingCompletionOrCancellation = () => {
-            if (booking.status === 'completed' || booking.status === 'arrived' || booking.status === 'cancelled') {
-                stopListening(); 
-                return res.status(200).json({success: true, message: "Your booking is complete and location has stopped updating"})
+            const { status } = booking;
+            if (status === 'completed' || status === 'arrived' || status === 'cancelled') {
+                stopListening();
+                console.log(`Booking ${bookingId} has been ${status}. Stopping listener.`);
             }
         };
 
-        setInterval(handleBookingCompletionOrCancellation, 300000); 
+        const statusInterval = setInterval(() => {
+            handleBookingCompletionOrCancellation();
+        }, 300000);
+
+        // Return an initial response indicating that the location update process has started.
+        return res.status(200).json({ success: true, message: "Driver location update process started" });
 
     } catch (error) {
         console.log("Error getting trip location:", error);
-        return res.status(500).json({ error: "Error getting trip location:" });
+        return res.status(500).json({ error: "Error getting trip location" });
     }
-}
+};
