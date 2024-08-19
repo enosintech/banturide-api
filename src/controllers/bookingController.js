@@ -618,6 +618,7 @@ export const findNewDriver = async (req, res) => {
             driverId: null,
             status: "pending",
             driverCurrentLocation: null,
+            driverArrivedAtPickup: false
         })
 
         await driverRef.update({
