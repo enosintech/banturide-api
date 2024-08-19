@@ -128,15 +128,18 @@ export const updateBookingLocation = async (req, res) => {
             const updatedBookingSnapshot = await bookingRef.get();
             const updatedBooking = updatedBookingSnapshot.data();
 
-            wss.clients.forEach((client) => {
-                if (client.userId === booking.userId) {
-                    sendDataToClient(client, {
-                        type: 'locationUpdated',
-                        message: "Your driver location has been updated",
-                        booking: JSON.stringify(updatedBooking)
-                    });
-                }
-            });
+            if(driverData.driverStatus !== "available"){
+                wss.clients.forEach((client) => {
+                    if (client.userId === booking.userId) {
+                        sendDataToClient(client, {
+                            type: 'locationUpdated',
+                            message: "Your driver location has been updated",
+                            booking: JSON.stringify(updatedBooking)
+                        });
+                    }
+                });
+            }
+
         });
 
         const handleBookingCompletionOrCancellation = () => {
