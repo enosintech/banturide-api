@@ -116,7 +116,7 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
     if (driverDistanceFromDropoff > 1.5) {
       return res.status(400).json({
         success: false,
-        message: "Driver is not close enough to the dropoff location to confirm payment.",
+        message: `Driver is ${driverDistanceFromDropoff} and is not close enough to the dropoff location to confirm payment.`,
       });
     }
 
