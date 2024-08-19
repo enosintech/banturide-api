@@ -107,6 +107,19 @@ export const updateBookingLocation = async (req, res) => {
                 return;
             }
 
+            if(driverData.driverStatus === "available"){
+                stopListening();
+
+                wss.clients.forEach((client) => {
+                    if(client.userId === booking.userId) {
+                        sendDataToClient(client, {
+                            type: "driverReleased",
+                            message: "Driver released and listening for location has stopped."
+                        })
+                    }
+                })
+            }
+
             await bookingRef.update({
                 driverCurrentLocation: driverLocation,
                 updatedAt: FieldValue.serverTimestamp()
