@@ -133,11 +133,18 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
     const paymentRef = db.collection('payments').doc();
     await paymentRef.set(newPayment);
 
+    const driverRef = db.collection("drivers").doc(booking?.driverId);
+
     // Update booking status
     await bookingRef.update({ 
       status: 'completed', 
       paymentReceived: true
     });
+
+    await driverRef.update(({
+      driverStatus: "available",
+      reservedBy: null,
+    }))
 
     const updatedBookingSnapshot = await bookingRef.get();
     const updatedBooking = updatedBookingSnapshot.data();
