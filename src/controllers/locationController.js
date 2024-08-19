@@ -92,7 +92,7 @@ export const updateBookingLocation = async (req, res) => {
 
             const distance = calculateDistance(driverLocation, dropOffLocation);
 
-            if (distance < 1) {
+            if (distance < 0.5) {
                 stopListening(); 
                 
                 wss.clients.forEach((client) => {
