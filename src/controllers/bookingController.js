@@ -288,6 +288,16 @@ export const searchDriversForBooking = async (req, res) => {
                         success: true,
                         message: "Booking confirmed and Search has now stopped",
                     });
+                } else if (bookingData.status === "cancelled") {
+                    if (searchTimeout) clearTimeout(searchTimeout);
+                    if (driverStatusUnsubscribe) driverStatusUnsubscribe();
+                    if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
+                    
+                    res.status(200).json({
+                        success: false,
+                        message: "Booking cancelled and Search has now stopped",
+                    })
+
                 }
             });
 

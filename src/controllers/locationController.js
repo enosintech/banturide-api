@@ -107,6 +107,8 @@ export const updateBookingLocation = async (req, res) => {
                     }
                 });
 
+                return res.status(200).json({success: true, message: "Your driver location is now being updated"})
+
             } else {
                 console.error(`Driver document ${driverId} does not exist`);
                 return res.status(404).json({ error: `Driver document ${driverId} does not exist` });
