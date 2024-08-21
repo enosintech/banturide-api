@@ -1,26 +1,20 @@
 import express from 'express';
+import { cancelDelivery, deliveryRequest, deliveryRiderAtDropOff, deliveryRiderAtPickUp, findNewDriverForDelivery, searchAndAssignDriverToDelivery, startDelivery } from '../controllers/deliveryController';
 
 const router = express.Router();
 
-// // Route to request a delivery
-// router.post('/request', requestDelivery);
+router.post('/request', deliveryRequest);
 
-// // Route to search for available drivers for the delivery (real-time)
-// router.post('/searchDrivers', searchDriversForDelivery);
+router.post('/assignDriver', searchAndAssignDriverToDelivery);
 
-// // Route to assign a driver to a delivery
-// router.post('/assignDriver', assignDeliveryDriver);
+router.post("/find-new-rider", findNewDriverForDelivery);
 
-// // Route to update the delivery status (e.g., ongoing, arrived, completed)
-// router.post('/updateStatus', updateDeliveryStatus);
+router.post("/cancel-delivery", cancelDelivery);
 
-// // Route to cancel a delivery
-// router.post('/cancel', cancelDelivery);
+router.post("/rider-arrived", deliveryRiderAtPickUp);
 
-// // Route to mark the delivery as arrived
-// router.post('/arrived', deliveryArrived);
+router.post("/start-delivery", startDelivery);
 
-// // Route to mark the delivery as completed
-// router.post('/complete', completeDelivery);
+router.post("/end-delivery", deliveryRiderAtDropOff);
 
 export default router;

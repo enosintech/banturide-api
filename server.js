@@ -35,6 +35,8 @@ const sendDataToClient = (userId, event, data) => {
     if(user) {
         io.to(user.socketId).emit(event, data);
         console.log(`Sent data to ${userId}:`, data);
+    } else {
+        console.log(`User with ID ${userId} is not connected`);
     }
 }
 
@@ -65,12 +67,12 @@ io.on("connection", (socket) => {
     })
 
     socket.on('sendMessage', (messageData) => {
-        const { recipientId, text, senderId } = messageData;
+        const { recipientId, text, senderId, time, id } = messageData;
 
         const recipient = connectedUsers.get(recipientId);
         if (recipient) {
-            io.to(recipient.socketId).emit('message', { text, senderId, recipientId });
-            console.log(`Message sent from ${senderId} to ${recipientId}: ${text}`);
+            io.to(recipient.socketId).emit('message', { text, senderId, recipientId, time, id });
+            console.log(`Message sent from ${senderId} to ${recipientId}: ${text} at ${time}.`);
         } else {
             console.log(`Recipient ${recipientId} is not connected`);
         }
@@ -99,63 +101,4 @@ server.listen(PORT, () => {
     console.log(`Server is running on PORT ${PORT}`)
 });
 
-export { sendDataToClient }
-
-// export { sendDataToClient, wss};
-
-// const wss = new WebSocketServer({ server });
-
-// function sendDataToClient(client, data) {
-//     if(client.readyState === WebSocket.OPEN){
-//         client.send(JSON.stringify(data))
-//     }
-// }
-
-// function sendMessageToRecipient(senderId, recipientId, content) {
-    //     wss.clients.forEach((client) => {
-        //         if (client.userId === recipientId && client.readyState === WebSocket.OPEN) {
-            //             const messageData = {
-                //                 type: 'message',
-                //                 senderId: senderId,
-//                 content: content,
-//                 timestamp: new Date(),
-//             };
-//             client.send(JSON.stringify(messageData));
-//             console.log(`Message from ${senderId} to ${recipientId} sent.`);
-//         }
-//     });
-// }
-
-
-
-// wss.on("connection", (ws, request) => {
-    
-//     const query = url.parse(request.url, true).query;
-//     const userId = query.userId;
-
-//     if(userId){
-//         ws.userId = userId;
-//         console.log(`Client Connected with client ID: ${userId}`);
-//     } else {
-//         ws.close();
-//         console.log(`Client connnected rejected: user ID missing`)
-//     }
-
-//     ws.on('message', (message) => {
-
-//         const data = JSON.parse(message);
-
-//         if (data.type === 'sendMessage') {
-//             sendMessageToRecipient(data.senderId, data.recipientId, data.content);
-//         }
-
-//     });
-
-//     ws.on('close', () => {
-//         console.log(`Client ${ws.userId} disconnected`);
-//     });
-
-//     ws.on('error', (error) => {
-//         console.error('WebSocket error:', error);
-//     });
-// }) 
+export { sendDataToClient };

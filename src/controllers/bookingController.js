@@ -102,6 +102,8 @@ export const searchDriversForBooking = async (req, res) => {
     let bookingStatusUnsubscribe; 
     let driverStatusUnsubscribe; 
 
+    let responseSent = false;
+
     try {
 
         const bookingSnapshot = await db.collection('bookings').doc(bookingId).get();
@@ -270,10 +272,15 @@ export const searchDriversForBooking = async (req, res) => {
 
                     sendDataToClient(booking.userId, "notification", { type: 'bookingConfirmed', message: "Your booking has been confirmed." })
 
-                    res.status(200).json({
-                        success: true,
-                        message: "Booking confirmed and Search has now stopped",
-                    });
+                    if (!responseSent) {
+                        responseSent = true;
+                        sendDataToClient(booking.userId, "notification", { type: 'bookingConfirmed', message: "Your booking has been confirmed." });
+
+                        res.status(200).json({
+                            success: true,
+                            message: "Booking confirmed and Search has now stopped",
+                        });
+                    }
 
                 }
 
@@ -283,10 +290,14 @@ export const searchDriversForBooking = async (req, res) => {
                     if (driverStatusUnsubscribe) driverStatusUnsubscribe();
                     if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
 
-                    res.status(200).json({
-                        success: true,
-                        message: "Booking cancelled and Search has now stopped",
-                    });
+                    if (!responseSent) {
+                        responseSent = true;
+                        res.status(200).json({
+                            success: true,
+                            message: "Booking cancelled and Search has now stopped",
+                        });
+                    }
+
                 }
             });
 
@@ -294,18 +305,19 @@ export const searchDriversForBooking = async (req, res) => {
             if (driverStatusUnsubscribe) driverStatusUnsubscribe();
             if (searchTimeout) clearTimeout(searchTimeout);
 
-            if (foundDrivers.length === 0) {
+            if (!responseSent) { 
+                responseSent = true;
 
-                sendDataToClient(booking.userId, "notification", { notificationId: `${booking.userId}-${Date.now()}`, type: 'driversNotFoundOnTime', message: "No drivers found within the specified time" })
-                res.status(404).json({ success: false, message: "No drivers found within the time limit." });
-
-            } else {
-
-                sendDataToClient(booking.userId, "notification", { type: 'searchComplete', message: "Drivers were found and the search is complete" })
-                res.status(200).json({
-                    success: true,
-                    message: "Drivers were found and the search is complete.",
-                });
+                if (foundDrivers.length === 0) {
+                    sendDataToClient(booking.userId, "notification", { notificationId: `${booking.userId}-${Date.now()}`, type: 'driversNotFoundOnTime', message: "No drivers found within the specified time" });
+                    res.status(404).json({ success: false, message: "No drivers found within the time limit." });
+                } else {
+                    sendDataToClient(booking.userId, "notification", { type: 'searchComplete', message: "Drivers were found and the search is complete" });
+                    res.status(200).json({
+                        success: true,
+                        message: "Drivers were found and the search is complete.",
+                    });
+                }
             }
         }, 120000);
 
@@ -314,11 +326,15 @@ export const searchDriversForBooking = async (req, res) => {
         if (searchTimeout) clearTimeout(searchTimeout); 
         if (driverStatusUnsubscribe) driverStatusUnsubscribe();
         if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
-        return res.status(500).json({
-            success: false,
-            message: "Error in processing your request.",
-            error: "internal server error"
-        });
+        
+        if (!responseSent) {
+            responseSent = true;
+            return res.status(500).json({
+                success: false,
+                message: "Error in processing your request.",
+                error: "internal server error",
+            });
+        }
     }
 };
 
