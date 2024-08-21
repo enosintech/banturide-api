@@ -1,7 +1,9 @@
 import { 
     getAuth,
     createUserWithEmailAndPassword,
+    sendEmailVerification,
     signInWithEmailAndPassword,
+    sendPasswordResetEmail,
     signOut,
     deleteUser
 } from "firebase/auth";
@@ -31,4 +33,4 @@ admin.initializeApp({
 
 const db = getFirestore();
 
-export { app, db, admin, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, deleteUser }
+export { app, db, admin, getAuth, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, deleteUser }

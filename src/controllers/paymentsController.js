@@ -2,7 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { db } from "../config/firebase.js";
 
-import { sendDataToClient, wss } from "../../server.js";
+import { sendDataToClient } from "../../server.js";
 
 // Function to calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (coord1, coord2) => {
@@ -34,10 +34,14 @@ export const updatePaymentMethod = async (req, res) => {
   const user = req.user;
 
   if(!user) {
-    return res.status(403).json({ error: "Unauthorized"})
+    return res.status(403).json({ error: "Unauthorized", success: false})
   }
 
-  const { bookingId, paymentMethod } = req.body; 
+  const { bookingId, paymentMethod } = req.body;
+  
+  if (!bookingId || !paymentMethod) {
+    return res.status(400).json({ error: "Booking ID and payment method are required", success: false });
+  }
 
   try {
     const bookingRef = db.collection('bookings').doc(bookingId);
@@ -58,16 +62,7 @@ export const updatePaymentMethod = async (req, res) => {
     const updatedBookingSnapshot = await bookingRef.get();
     const updatedBooking = updatedBookingSnapshot.data();
 
-    wss.clients.forEach((client) => {
-      if(client.userId === updatedBooking.driverId){
-        sendDataToClient(client, {
-          type: "paymentChanged",
-          notificationId: `${bookingId + "12"}`,
-          message: "Payment Method updated",
-          booking: JSON.stringify(updatedBooking)
-        })
-      }
-    })
+    sendDataToClient(updatedBooking.driverId, "notification", { type: "paymentChanged", notificationId: `${bookingId}-${Date.now()}`, message: "Payment Method Updated", booking: JSON.stringify(updatedBooking)})
 
     return res.status(200).json({
       success: true,
@@ -76,7 +71,7 @@ export const updatePaymentMethod = async (req, res) => {
     })
 
   } catch (error) {
-    console.log("Error updating payment method: ", error);
+    console.error("Error updating payment method: ", error);
     return res.status(500).json({
       success: false,
       message: "Error updating payment method"
@@ -91,36 +86,48 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
   const user = req.user
 
   if (!user) {
-    return res.status(403).json({ error: "Unauthorized" });
+    return res.status(403).json({ error: "Unauthorized", success: false });
   }
 
   const { bookingId, amount } = req.body;
 
+  if (!bookingId) {
+    return res.status(400).json({ error: "Booking ID is required", success: false });
+  }
+
+  if (!amount || isNaN(amount) || amount <= 0) {
+    return res.status(400).json({ error: "Invalid amount, amount must be number", success: false });
+  }
+
   try {
-    // Check if the booking exists and driver has arrived at dropoff
+
     const bookingRef = db.collection('bookings').doc(bookingId);
     const bookingDoc = await bookingRef.get();
 
-    if (!bookingDoc.exists || !bookingDoc.data().driverArrivedAtDropoff) {
+    if (!bookingDoc.exists) {
       return res.status(404).json({
         success: false,
-        message: "Booking not found or driver has not arrived at dropoff location.",
+        message: "Booking not found.",
       });
+    }
+
+    if(!bookingDoc.data().driverArrivedAtDropoff) {
+      return res.status(404).json({
+        success: false,
+        messsage: "Driver has not arrived at the dropoff location."
+      })
     }
 
     const booking = bookingDoc.data();
-
-    // Check if the driver is within the specified radius of the dropoff location
     const driverDistanceFromDropoff = calculateDistance(booking.driverCurrentLocation, booking.dropOffLocation);
 
-    if (driverDistanceFromDropoff > 1.5) {
+    if (driverDistanceFromDropoff > 1) {
       return res.status(400).json({
-        success: false,
-        message: `Driver is ${driverDistanceFromDropoff} and is not close enough to the dropoff location to confirm payment.`,
+          success: false,
+          message: `Driver is ${driverDistanceFromDropoff.toFixed(2)} km away and is not close enough to the dropoff location to confirm payment.`,
       });
     }
 
-    // Create a new payment record
     const newPayment = {
       bookingId,
       amount,
@@ -129,13 +136,11 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
       createdAt: FieldValue.serverTimestamp()
     };
 
-    // Save the payment record
     const paymentRef = db.collection('payments').doc();
     await paymentRef.set(newPayment);
 
     const driverRef = db.collection("drivers").doc(booking?.driverId);
 
-    // Update booking status
     await bookingRef.update({ 
       status: 'completed', 
       paymentReceived: true
@@ -149,11 +154,7 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
     const updatedBookingSnapshot = await bookingRef.get();
     const updatedBooking = updatedBookingSnapshot.data();
 
-    wss.clients.forEach((client) => {
-      if (client.userId === updatedBooking.userId) {
-          sendDataToClient(client, { type: 'paymentReceived', title: "Ride Complete", message: "Your ride is complete, Please remember to Rate your driver", booking: JSON.stringify(updatedBooking) });
-      }
-    });
+    sendDataToClient(updatedBooking.userId, "notification", { type: "paymentReceived", notificationId: `${bookingId}-${Date.now()}`, title: "Ride Complete", message: "Your ride is complete, Please remember to Rate your driver", booking: JSON.stringify(updatedBooking) })
 
     return res.status(200).json({
       success: true,
@@ -171,3 +172,13 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
 
   }
 };
+
+export const confirmPaymentAndMarkDeliveryAsSuccessful = async (req, res) => {
+  const { } = req.body;
+
+  try {
+
+  } catch (error) {
+
+  }
+}

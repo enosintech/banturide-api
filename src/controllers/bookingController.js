@@ -2,7 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { db } from "../config/firebase.js";
 
-import { sendDataToClient, wss } from "../../server.js";
+import { sendDataToClient } from "../../server.js";
 
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -23,7 +23,7 @@ export const passengerBookingRequest = async (req, res) => {
     const user = req.user;
 
     if(!user) {
-        return res.status(400).json({
+        return res.status(401).json({
             success: false,
             message: "Unauthorized"
         })
@@ -61,11 +61,7 @@ export const passengerBookingRequest = async (req, res) => {
         const bookingData = bookingSnapshot.data();
         const bookingId = bookingRef.id;
 
-        wss.clients.forEach((client) => {
-            if (client.userId === user.uid) {
-                sendDataToClient(client, { notificationId: `${bookingId + "01"}`, type: 'requestReceived', message: "Booking Request Received Successfully!" });
-            }
-        });
+        sendDataToClient(user.uid, "notification", { type: "requestReceived" , notificationId: `${user.uid}-${Date.now()}`, message: "Booking Request Received Successfully!"})
 
         return res.status(200).json({
             success: true,
@@ -77,7 +73,7 @@ export const passengerBookingRequest = async (req, res) => {
         });
 
     } catch (error) {
-        console.log("Error in booking ride", error);
+        console.error("Error in booking ride", error);
         return res.status(500).json({
             success: false,
             message: "Error in booking a ride.",
@@ -89,6 +85,15 @@ export const passengerBookingRequest = async (req, res) => {
 export const searchDriversForBooking = async (req, res) => {
     
     const { bookingId } = req.body;
+
+    if(!bookingId){
+        return res.status(400).json({
+            success: false,
+            message: "bookingId is required"
+        })
+    }
+
+    const foundDrivers = [];
     const reservedDrivers = new Map();
     const clientReservations = new Map(); 
     const notifiedDrivers = new Set(); 
@@ -98,21 +103,15 @@ export const searchDriversForBooking = async (req, res) => {
     let driverStatusUnsubscribe; 
 
     try {
-        // Fetch booking data
+
         const bookingSnapshot = await db.collection('bookings').doc(bookingId).get();
         if (!bookingSnapshot.exists) {
             return res.status(404).json({ success: false, message: "Booking not found." });
         }
         const booking = bookingSnapshot.data();
 
-        // Notify client that search has started
-        wss.clients.forEach((client) => {
-            if (client.userId === booking.userId) {
-                sendDataToClient(client, { type: 'searchStarted', message: "Search for drivers has commenced" });
-            }
-        });
+        sendDataToClient(booking.userId, "notification", { type: "searchStarted", message: "Search for drivers has commenced"})
 
-        // Function to reserve a driver
         const reserveDriver = async (driverId, clientId) => {
             try {
                 await db.runTransaction(async (transaction) => {
@@ -123,7 +122,6 @@ export const searchDriversForBooking = async (req, res) => {
                         console.log('Driver does not exist');
                     }
 
-                    // Reserve the driver for the client
                     transaction.update(driverRef, {
                         driverStatus: 'reserved',
                         reservedBy: clientId,
@@ -139,7 +137,7 @@ export const searchDriversForBooking = async (req, res) => {
                 console.error("Error during transaction:", error);
             }
 
-            // Set a timeout to revert the driver’s status if not picked
+
             setTimeout(async () => {
                 const currentDriverDoc = await db.collection('drivers').doc(driverId).get();
                 if (currentDriverDoc.exists && currentDriverDoc.data().driverStatus === 'reserved' && clientReservations.get(driverId) === clientId) {
@@ -156,7 +154,6 @@ export const searchDriversForBooking = async (req, res) => {
             }, 30000);
         };
 
-        // Initial search for available drivers
         const searchDrivers = async () => {
             const availableDriversSnapshot = await db.collection('drivers')
                 .where('driverStatus', '==', 'available')
@@ -174,14 +171,16 @@ export const searchDriversForBooking = async (req, res) => {
                 if (distance < 2) {
                     const driverId = doc.id;
 
-                    // Check if the driver is already reserved
+                    if(!foundDrivers.includes(driverId)){
+                        foundDrivers.push(driverId)
+                    }
+
                     if (reservedDrivers.has(driverId)) return;
 
                     const driverRef = db.collection('drivers').doc(driverId); 
 
-                    // Reserve the driver for the client
                     reserveDriver(driverId, booking.userId).then(async () => {
-                        const updatedDriverDoc = await driverRef.get(); // Get the updated driver document
+                        const updatedDriverDoc = await driverRef.get();
                         const updatedDriverData = updatedDriverDoc.data();
                         const driverData = {
                             driverId: driverId,
@@ -189,31 +188,26 @@ export const searchDriversForBooking = async (req, res) => {
                         }
 
                         if (!notifiedDrivers.has(driverId)) {
-                            wss.clients.forEach((client) => {
-                                if (client.userId === booking.userId) {
-                                    sendDataToClient(client, {
-                                        type: 'driverFound',
-                                        notificationId: driverId,
-                                        message: "A driver has been found initially and is reserved for 30 seconds",
-                                        driver: JSON.stringify(driverData),
-                                        distance: distance
-                                    });
-                                }
-                            });
+
+                            sendDataToClient(booking.userId, "notification", {
+                                type: 'driverFound',
+                                notificationId: `${driverId}-${Date.now()}`,
+                                message: "A driver has been found initially and is reserved for 30 seconds",
+                                driver: JSON.stringify(driverData),
+                                distance: distance
+                            })
                             notifiedDrivers.add(driverId);
                         }
                     })
                     .catch((error) => {
-                        console.log("this", error)
+                        console.log("Error Reserving a driver", error)
                     })
                 }
             });
         };
 
-        // Start the initial search
         await searchDrivers();
 
-        // Set up real-time listener for changes in driver status
         driverStatusUnsubscribe = db.collection('drivers')
             .where('driverStatus', '==', 'available')
             .onSnapshot(snapshot => {
@@ -230,14 +224,16 @@ export const searchDriversForBooking = async (req, res) => {
                         if (distance < 2) {
                             const driverId = change.doc.id;
 
-                            // Check if the driver is already reserved
+                            if(!foundDrivers.includes(driverId)){
+                                foundDrivers.push(driverId)
+                            }
+
                             if (reservedDrivers.has(driverId)) return;
 
                             const driverRef = db.collection('drivers').doc(driverId); 
 
-                            // Reserve the driver for the client
                             reserveDriver(driverId, booking.userId).then(async () => {
-                                const updatedDriverDoc = await driverRef.get(); // Get the updated driver document
+                                const updatedDriverDoc = await driverRef.get();
                                 const updatedDriverData = updatedDriverDoc.data();
 
                                 const driverData = {
@@ -246,43 +242,33 @@ export const searchDriversForBooking = async (req, res) => {
                                 }
 
                                 if (!notifiedDrivers.has(driverId)) {
-                                    wss.clients.forEach((client) => {
-                                        if (client.userId === booking.userId) {
-                                            sendDataToClient(client, {
-                                                type: 'driverFound',
-                                                notificationId: driverId,
-                                                message: "A driver has been found and is reserved for 30 seconds",
-                                                driver: JSON.stringify(driverData),
-                                                distance: distance,
-                                            });
-                                        }
-                                    });
+                                    sendDataToClient(booking.userId, "notification", {
+                                        type: 'driverFound',
+                                        notificationId: `${booking.userId}-${Date.now()}`,
+                                        message: "A driver has been found and is reserved for 30 seconds",
+                                        driver: JSON.stringify(driverData),
+                                        distance: distance,
+                                    })
                                     notifiedDrivers.add(driverId);
                                 }
                             })
                             .catch((error) => {
-                                console.log("this", error)
+                                console.log("Error reserving a driver for a booking: ", error)
                             })
                         }
                     }
                 });
             });
 
-        // Set up real-time listener for booking status changes
         bookingStatusUnsubscribe = db.collection('bookings').doc(bookingId)
             .onSnapshot(async (doc) => {
                 const bookingData = doc.data();
                 if (bookingData.status === 'confirmed') {
-                    // Stop searching
                     if (searchTimeout) clearTimeout(searchTimeout);
                     if (driverStatusUnsubscribe) driverStatusUnsubscribe();
                     if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
 
-                    wss.clients.forEach((client) => {
-                        if (client.userId === booking.userId) {
-                            sendDataToClient(client, { type: 'bookingConfirmed', message: "Your booking has been confirmed." });
-                        }
-                    });
+                    sendDataToClient(booking.userId, "notification", { type: 'bookingConfirmed', message: "Your booking has been confirmed." })
 
                     res.status(200).json({
                         success: true,
@@ -292,7 +278,7 @@ export const searchDriversForBooking = async (req, res) => {
                 }
 
                 if(bookingData.status === "cancelled") {
-                    // Stop searching
+    
                     if (searchTimeout) clearTimeout(searchTimeout);
                     if (driverStatusUnsubscribe) driverStatusUnsubscribe();
                     if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
@@ -304,24 +290,18 @@ export const searchDriversForBooking = async (req, res) => {
                 }
             });
 
-        // Handle timeout after 2 minutes
         searchTimeout = setTimeout(async () => {
             if (driverStatusUnsubscribe) driverStatusUnsubscribe();
-            if (searchTimeout) clearTimeout(searchTimeout); // Stop checking booking status
+            if (searchTimeout) clearTimeout(searchTimeout);
 
-            if (reservedDrivers.size === 0) {
-                wss.clients.forEach((client) => {
-                    if (client.userId === booking.userId) {
-                        sendDataToClient(client, { notificationId: Math.random() + `${bookingId}`, type: 'driversNotFoundOnTime', message: "No drivers found within the specified time" });
-                    }
-                });
+            if (foundDrivers.length === 0) {
+
+                sendDataToClient(booking.userId, "notification", { notificationId: `${booking.userId}-${Date.now()}`, type: 'driversNotFoundOnTime', message: "No drivers found within the specified time" })
                 res.status(404).json({ success: false, message: "No drivers found within the time limit." });
+
             } else {
-                wss.clients.forEach((client) => {
-                    if (client.userId === booking.userId) {
-                        sendDataToClient(client, { type: 'searchComplete', message: "Drivers were found and the search is complete" });
-                    }
-                });
+
+                sendDataToClient(booking.userId, "notification", { type: 'searchComplete', message: "Drivers were found and the search is complete" })
                 res.status(200).json({
                     success: true,
                     message: "Drivers were found and the search is complete.",
@@ -331,12 +311,13 @@ export const searchDriversForBooking = async (req, res) => {
 
     } catch (error) {
         console.error("Error in searching drivers for booking:", error);
-        if (searchTimeout) clearTimeout(searchTimeout); // Clear timeout in case of error
-        if (driverStatusUnsubscribe) driverStatusUnsubscribe(); // Clear Firestore listener
-        if (bookingStatusUnsubscribe) bookingStatusUnsubscribe(); // Clear booking status listener
+        if (searchTimeout) clearTimeout(searchTimeout); 
+        if (driverStatusUnsubscribe) driverStatusUnsubscribe();
+        if (bookingStatusUnsubscribe) bookingStatusUnsubscribe();
         return res.status(500).json({
             success: false,
             message: "Error in processing your request.",
+            error: "internal server error"
         });
     }
 };
@@ -360,6 +341,13 @@ export const assignDriverToBooking = async (req, res) => {
 
         const driver = driverSnapshot.data();
 
+        if (driver.driverStatus !== 'reserved') {
+            return res.status(400).json({
+                success: false,
+                message: "Driver is not available.",
+            });
+        }
+
         await bookingRef.update({
             bookingId: bookingRef.id,
             driverId: driverId,
@@ -382,33 +370,19 @@ export const assignDriverToBooking = async (req, res) => {
         const userSnapshot = await userRef.get();
         const user = userSnapshot.data();
 
-        wss.clients.forEach((client) => {
-            if(client.userId === updatedBooking.userId){
-                sendDataToClient(client, {
-                    type: 'driverAssigned',
-                    notificationId: `${bookingId + "03"}`,
-                    message: "You have a new driver",
-                    booking: JSON.stringify(updatedBooking),
-                    driver: JSON.stringify(updatedDriver)
-                });
-            }
-        });
-        
-        wss.clients.forEach((client) => {
-            if(client.userId === driverId){
-                sendDataToClient(client, {
-                    type: 'driverAssigned',
-                    notificationId: `${bookingId + "03"}`,
-                    message: "You have a new customer",
-                    booking: JSON.stringify(updatedBooking),
-                    user: JSON.stringify(user)
-                });
-            }
-        });
+        sendDataToClient(driverId, "notification", {
+            type: 'driverAssigned',
+            notificationId: `${driverId}-${Date.now()}`,
+            message: "You have a new customer",
+            booking: JSON.stringify(updatedBooking),
+            user: JSON.stringify(user)
+        })
 
         return res.status(200).json({
             success: true,
             message: "Booking confirmed successfully!",
+            booking: updatedBooking,
+            driver: updatedDriver
         });
 
     } catch (error) {
@@ -416,6 +390,7 @@ export const assignDriverToBooking = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in assigning driver to booking.",
+            error: "Internal Server Error"
         });
     }
 };
@@ -629,17 +604,13 @@ export const findNewDriver = async (req, res) => {
 
         const updatedBookingSnapshot = await bookingRef.get();
         const updatedBooking = updatedBookingSnapshot.data();
-        
-        wss.clients.forEach((client) => {
-            if(client.userId === driverId){
-                sendDataToClient(client, { notificationId: `${bookingId + "04"}`, type: 'bookingCancelled', message: "Customer has cancelled the booking", reason: reason });
-            }
-        });
+
+        sendDataToClient(driverId, "notification", { type: "bookingCancelled", notificationId: `${driverId}-${Date.now()}`, message: "Customerr has cancelled the booking", reason: reason || "No reason Provided"})
 
         return res.status(200).json({
             success: true,
             message: "Booking pending new driver",
-            booking: JSON.stringify(updatedBooking),
+            booking: updatedBooking,
         });
 
     } catch (error) {
@@ -686,25 +657,16 @@ export const cancelBooking = async (req, res) => {
             });
 
             await bookingRef.update({
-                reason: reason
+                reason: reason || "No reason provided"
             })
 
-            // Notify driver about booking cancellation
-            wss.clients.forEach((client) => {
-                if(client.userId === booking.driverId){
-                    sendDataToClient(client, { notificationId: `${bookingId + "04"}`, type: 'bookingCancelled', message: "Customer has cancelled the booking", reason: reason });
-                }
-            });
+            sendDataToClient(booking.driverId, "notification", { notificationId: `${bookingId}-${Date.now()}`, type: 'bookingCancelled', message: "Customer has cancelled the booking", reason: reason || "No reason Provided" })
         }
 
         const updatedBookingSnapshot = await bookingRef.get();
         const updatedBooking = updatedBookingSnapshot.data();
 
-        wss.clients.forEach((client) => {
-            if(client.userId === booking.userId){
-                sendDataToClient(client, { notificationId: `${bookingId + "04"}`, type: 'bookingCancelled', message: "Your booking has been cancelled successfully" });
-            }
-        });
+        sendDataToClient(booking.userId, "notification", { notificationId: `${booking.userId}-${Date.now()}`, type: 'bookingCancelled', message: "Your booking has been cancelled successfully" })
 
         return res.status(200).json({
             success: true,
@@ -716,6 +678,7 @@ export const cancelBooking = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in cancelling booking.",
+            error: "Internal Server Error"
         });
     }
 };
@@ -734,10 +697,19 @@ export const driverAtPickupLocation = async (req, res) => {
         const bookingRef = db.collection('bookings').doc(bookingId);
         const bookingSnapshot = await bookingRef.get();
 
-        if (!bookingSnapshot.exists || bookingSnapshot.data().status !== 'confirmed') {
+        if (!bookingSnapshot.exists) {
             return res.status(404).json({
                 success: false,
-                message: "Invalid booking or booking not confirmed.",
+                message: "Booking not found."
+            });
+        }
+
+        const bookingData = bookingSnapshot.data();
+
+        if (bookingData.status !== 'confirmed') {
+            return res.status(400).json({
+                success: false,
+                message: "Booking not confirmed or invalid."
             });
         }
 
@@ -748,11 +720,7 @@ export const driverAtPickupLocation = async (req, res) => {
         const updatedBookingSnapshot = await bookingRef.get();
         const updatedBooking = updatedBookingSnapshot.data();
 
-        wss.clients.forEach((client) => {
-            if(client.userId === updatedBooking.userId){
-                sendDataToClient(client, { notificationId: `${bookingId + "06"}`, type: 'driverArrived', message: "Your driver has arrived at pickup Location", booking: JSON.stringify(updatedBooking)});
-            }
-        })
+        sendDataToClient(updatedBooking.userId, "notification", { notificationId: `${updatedBooking.userId}-${Date.now()}`, type: 'driverArrived', message: "Your driver has arrived at pickup Location", booking: JSON.stringify(updatedBooking) })
 
         return res.status(200).json({
             success: true,
@@ -763,6 +731,7 @@ export const driverAtPickupLocation = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in notifying driver arrival at pickup location.",
+            error: "Internal Server Error"
         });
     }
 };
@@ -782,25 +751,31 @@ export const startRide = async (req, res) => {
         const bookingRef = db.collection('bookings').doc(bookingId);
         const bookingSnapshot = await bookingRef.get();
 
-        if (!bookingSnapshot.exists || !bookingSnapshot.data().driverArrivedAtPickup) {
+        if (!bookingSnapshot.exists) {
             return res.status(400).json({
                 success: false,
-                message: "You must arrive at the pickup location before starting the ride.",
+                message: "Booking Not Found",
+            });
+        }
+
+        const bookingData = bookingSnapshot.data();
+
+        if (!bookingData.driverArrivedAtPickup) {
+            return res.status(400).json({
+                success: false,
+                message: "You must arrive at pickup location before starting the ride"
             });
         }
 
         await bookingRef.update({
-            status: 'ongoing'
+            status: 'ongoing',
+            rated: false
         });
 
         const updatedBookingSnapshot = await bookingRef.get();
         const updatedBooking = updatedBookingSnapshot.data();
 
-        wss.clients.forEach((client) => {
-            if(client.userId === updatedBooking.userId){
-                sendDataToClient(client, { notificationId: `${bookingId + "08"}`, type: 'rideStarted', message: "You are now on the way", booking: JSON.stringify(updatedBooking) });
-            }
-        })
+        sendDataToClient(updatedBooking.userId, "notification", { notificationId: `${updatedBooking.userId}-${Date.now()}`, type: 'rideStarted', message: "You are now on the way", booking: JSON.stringify(updatedBooking) })
 
         return res.status(200).json({
             success: true,
@@ -812,6 +787,7 @@ export const startRide = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in starting the ride.",
+            error: "internal Server Error"
         });
     }
 };
@@ -831,27 +807,31 @@ export const endRide = async (req, res) => {
         const bookingRef = db.collection('bookings').doc(bookingId);
         const bookingSnapshot = await bookingRef.get();
 
-        if (!bookingSnapshot.exists || bookingSnapshot.data().status !== 'ongoing') {
+        if (!bookingSnapshot.exists) {
             return res.status(400).json({
                 success: false,
-                message: "The ride is not ongoing or booking not found.",
+                message: "booking not found.",
+            });
+        }
+
+        const bookingData = bookingSnapshot.data();
+
+        if (bookingData.status !== "ongoing") {
+            return res.status(400).json({
+                success: false,
+                message: "The ride is not on the way"
             });
         }
 
         await bookingRef.update({
             driverArrivedAtDropoff: true,
             status: 'arrived',
-            rated: false,
         });
 
         const updatedBookingSnapshot = await bookingRef.get();
         const updatedBooking = updatedBookingSnapshot.data();
 
-        wss.clients.forEach((client) => {
-            if(client.userId === updatedBooking.userId){
-                sendDataToClient(client, { notificationId: `${bookingId + "10"}`, type: 'rideEnded', message: "You have arrived at your destination, remember to rate your driver!", booking: JSON.stringify(updatedBooking) });
-            }
-        })
+        sendDataToClient(updatedBooking.userId, 'notification', {  notificationId: `${updatedBooking.userId}-${Date.now()}`, type: 'rideEnded', message: "You have arrived at your destination, remember to rate your driver!", booking: JSON.stringify(updatedBooking) })
 
         return res.status(200).json({
             success: true,
@@ -863,6 +843,7 @@ export const endRide = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in ending the ride.",
+            error: "Internal server error."
         });
     }
 };

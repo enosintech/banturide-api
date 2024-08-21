@@ -6,10 +6,22 @@ export const addFavoriteLocation = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     const { type, address, name } = req.body;
+
+    if (!type || !address || !name) {
+        return res.status(422).json({
+            message: "Missing required fields",
+            fields: {
+                type: !type ? "Type is required" : undefined,
+                address: !address ? "Address is required" : undefined,
+                name: !name ? "Name is required" : undefined,
+            },
+            success: false
+        });
+    }
 
     try {
         const favoriteLocation = {
@@ -18,7 +30,6 @@ export const addFavoriteLocation = async (req, res) => {
             address,
             name,
             createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp()
         };
 
         const favoriteRef = db.collection('favoriteLocations').doc();
@@ -26,8 +37,8 @@ export const addFavoriteLocation = async (req, res) => {
 
         res.status(201).json({ message: "favorite location added successfully", success: true });
     } catch (error) {
-        console.log("Errr adding favorite location", error);
-        res.status(500).json({ error: "Error adding favorite location" });
+        console.log("Error adding favorite location", error);
+        res.status(500).json({ error: "Error adding favorite location", success: false });
     }
 };
 
@@ -35,17 +46,17 @@ export const getFavoriteLocations = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     try {
         const favoriteLocationsSnapshot = await db.collection('favoriteLocations').where('userId', '==', user.uid).get();
         const favoriteLocations = favoriteLocationsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        res.status(200).json(favoriteLocations);
+        res.status(200).json({ favoriteLocations, success: true});
 
     } catch (error) {
         console.log("Error getting favorite locations", error);
-        res.status(500).json({ error: "Error getting favorite locations" });
+        res.status(500).json({ error: "Error getting favorite locations", success: false });
     }
 };
 
@@ -53,13 +64,21 @@ export const updateFavoriteLocation = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     const { locationId, address, name } = req.body;
 
     if (!locationId || !address || !name) {
-        return res.status(400).json({ error: "Location ID, address, and name are required" });
+        return res.status(422).json({
+            message: "Missing required fields",
+            fields: {
+                locationId: !locationId ? "location id is required" : undefined,
+                address: !address ? "Address is required" : undefined,
+                name: !name ? "Name is required" : undefined,
+            },
+            success: false
+        });
     }
 
     try {
@@ -67,7 +86,12 @@ export const updateFavoriteLocation = async (req, res) => {
         const favoriteDoc = await favoriteRef.get();
 
         if (!favoriteDoc.exists) {
-            return res.status(404).json({ error: 'Favorite location not found' });
+            return res.status(404).json({ error: 'Favorite location not found', success: false });
+        }
+
+        const favoriteData = favoriteDoc.data();
+        if (favoriteData.userId !== user.uid) {
+            return res.status(403).json({ error: "You do not have permission to update this location", success: false });
         }
 
         await favoriteRef.update({
@@ -78,8 +102,8 @@ export const updateFavoriteLocation = async (req, res) => {
 
         res.status(200).json({ message: "Favorite location updated successfully!", success: true});
     } catch (error) {
-        console.log("Error updating favorite location", error);
-        res.status(500).json({ error: "Error updating favorite location" });
+        console.error("Error updating favorite location", error);
+        res.status(500).json({ error: "Error updating favorite location", success: false });
     }
 };
 
@@ -87,13 +111,19 @@ export const deleteFavoriteLocation = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     const { locationId } = req.body;
 
     if (!locationId) {
-        return res.status(400).json({ error: "Location ID is required" });
+        return res.status(422).json({
+            message: "Missing required fields",
+            fields: {
+                locationId: !locationId ? "location id is required" : undefined,
+            },
+            success: false
+        });
     }
 
     try {
@@ -101,14 +131,19 @@ export const deleteFavoriteLocation = async (req, res) => {
         const favoriteDoc = await favoriteRef.get();
 
         if (!favoriteDoc.exists) {
-            return res.status(404).json({ error: 'Favorite location not found' });
+            return res.status(404).json({ error: 'Favorite location not found' , success: false});
+        }
+
+        const favoriteData = favoriteDoc.data();
+        if (favoriteData.userId !== user.uid) {
+            return res.status(403).json({ error: "You do not have permission to update this location", success: false });
         }
 
         await favoriteRef.delete();
 
         res.status(200).json({ message: 'Favorite location deleted Successfully!', success: true });
     } catch (error) {
-        console.log("Error deleting favorite location", error);
-        res.status(500).json({ error: "Error deleting favorite location" });
+        console.error("Error deleting favorite location", error);
+        res.status(500).json({ error: "Error deleting favorite location", success: false });
     }
 };

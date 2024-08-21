@@ -46,13 +46,13 @@ export const getUserProfile = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     try {
         const userDoc = await db.collection('users').doc(user.uid).get();
         if (!userDoc.exists) {
-            return res.status(404).json({ error: "User not found" });
+            return res.status(404).json({ error: "User not found", success: false });
         }
 
         const userData = {
@@ -60,10 +60,10 @@ export const getUserProfile = async (req, res) => {
             ...userDoc.data(),
         }
 
-        res.status(200).json(userData);
+        res.status(200).json({ userData, success: true });
     } catch (error) {
-        console.log("Error when obtaining user profile details", error)
-        res.status(500).json({ error: "Error when obtaining profile details." });
+        console.error("Error when obtaining user profile details", error)
+        res.status(500).json({ error: "Error when obtaining profile details.", success: false });
     }
 };
 
@@ -73,12 +73,13 @@ export const uploadProfilePicture = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     upload(req, res, async (err) => {
         if (err) {
-            return res.status(400).json({ success: false, error: err });
+            console.error("Upload error:", err);
+            return res.status(400).json({ success: false, error: "File upload error"});
         }
 
         if (!req.file) {
@@ -87,12 +88,17 @@ export const uploadProfilePicture = async (req, res) => {
 
         try {
             const uploadResponse = await cloudinary.uploader.upload(req.file.path, { public_id: `profile_${user.uid}` });
+
+            if (!uploadResponse || !uploadResponse.secure_url) {
+                return res.status(500).json({ success: false, error: 'Cloudinary upload failed or returned invalid response' });
+            }
+
             await db.collection('users').doc(user.uid).update({ avatar: uploadResponse.secure_url });
 
-            res.status(200).json({ message: "Profile picture uploaded successfully"});
+            res.status(200).json({ message: "Profile picture uploaded successfully", success: true});
         } catch (error) {
             console.log("Error uploading profile picture", error)
-            res.status(500).json({ error: "Error when obtaining profile details." });
+            res.status(500).json({ error: "Error when obtaining profile details.", success: false });
         }
     });
     
@@ -104,13 +110,17 @@ export const removeProfilePicture = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     try {
         const userDoc = await db.collection('users').doc(user.uid).get();
-        if (!userDoc.exists || !userDoc.data().avatar) {
-            return res.status(400).json({ error: "No profile picture to remove" });
+        if (!userDoc.exists) {
+            return res.status(400).json({ error: "User not found", success: false });
+        }
+
+        if(!userDoc.data().avatar){
+            return res.status(400).json({ error: "No profile picture to remove ", success: false});
         }
 
         const publicId = userDoc.data().avatar.split('/').pop().split('.')[0];
@@ -118,10 +128,10 @@ export const removeProfilePicture = async (req, res) => {
 
         await db.collection('users').doc(user.uid).update({ avatar: null });
 
-        res.status(200).json({ message: "profile picture successfully removed"});
+        res.status(200).json({ message: "profile picture successfully removed", success: true });
     } catch (error) {
         console.log("Error removing profile picture", error)
-        res.status(500).json({ error: "Error when obtaining profile details." });
+        res.status(500).json({ error: "Error when obtaining profile details.", success: false });
     }
 
 };
@@ -132,19 +142,23 @@ export const editUserName = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     const { firstname, lastname } = req.body;
 
+    if (!firstname || !lastname) {
+        return res.status(400).json({ error: "Firstname and lastname are required", success: false });
+    }
+
     try {
         await db.collection('users').doc(user.uid).update({ firstname, lastname });
 
-        res.status(200).json({ message: "Username updated successfully"});
+        res.status(200).json({ message: "Username updated successfully", success: true });
 
     } catch (error) {
         console.log("Error editing username", error)
-        res.status(500).json({ error: "Error when obtaining profile details." });
+        res.status(500).json({ error: "Error when obtaining profile details.", success: false });
     }
 
 };
@@ -155,18 +169,22 @@ export const toggleNotifications = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     const { value } = req.body;
 
+    if (typeof value !== 'boolean') {
+        return res.status(400).json({ error: "Invalid value for notificationsEnabled", success: false });
+    }
+
     try {
         await db.collection('users').doc(user.uid).update({ notificationsEnabled: value });
 
-        res.status(200).json({ message: "Notifications updated successfully", value: value });
+        res.status(200).json({ message: "Notifications updated successfully", value, success: true });
     } catch (error) {
         console.log("Error toggling notifications", error)
-        res.status(500).json({ error: "Error when obtaining profile details." });
+        res.status(500).json({ error: "Error when obtaining profile details.", success: false });
     }
 
 };
@@ -177,18 +195,22 @@ export const toggleDriverShouldCall = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     const { value } = req.body;
 
+    if (typeof value !== 'boolean') {
+        return res.status(400).json({ error: "Invalid value for notificationsEnabled", success: false });
+    }
+
     try {
         await db.collection('users').doc(user.uid).update({ driverShouldCall: value });
 
-        res.status(200).json({ message: "Driver Should Call Updated Successfully", value: value});
+        res.status(200).json({ message: "Driver Should Call Updated Successfully", value, success: false });
     } catch (error) {
         console.log("Error toggling driver should call", error)
-        res.status(500).json({ error: "Error when obtaining profile details." });
+        res.status(500).json({ error: "Error when obtaining profile details.", success: false });
     }
 
 };
