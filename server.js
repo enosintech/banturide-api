@@ -35,8 +35,6 @@ const sendDataToClient = (userId, event, data) => {
     if(user) {
         io.to(user.socketId).emit(event, data);
         console.log(`Sent data to ${userId}:`, data);
-    } else {
-        console.log(`User with ID ${userId} is not connected`);
     }
 }
 
