@@ -44,13 +44,26 @@ io.on("connection", (socket) => {
     console.log("Client Connected Successfully:", socket.id)
 
     socket.on("register", ({ userId, userType}) => {
-        connectedUsers.set(userId, { socketId: socket.id, userType});
-        console.log(`User Registered: ${userId}, Type: ${userType}`)
-        console.log(connectedUsers)
-        socket.emit('connectionAcknowledged', {
-            status: 'success',
-            message: `Connection to the server was successful! ${userId} ${userType}`,
-        });
+        try {
+            if (!userId || !userType) {
+                throw new Error('Missing userId or userType');
+            }
+
+            connectedUsers.set(userId, { socketId: socket.id, userType });
+            console.log(`User Registered: ${userId}, Type: ${userType}`);
+            console.log(connectedUsers);
+
+            socket.emit('connectionAcknowledged', {
+                status: 'success',
+                message: `Connection to the server was successful! User ID: ${userId}, Type: ${userType}`,
+            });
+        } catch (error) {
+            console.error('Error handling register event:', error);
+            socket.emit('connectionAcknowledged', {
+                status: 'error',
+                message: `Failed to register user: ${error.message}`,
+            });
+        }
     })
 
     socket.on('sendMessage', (messageData) => {
