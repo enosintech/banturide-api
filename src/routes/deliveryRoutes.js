@@ -1,5 +1,5 @@
 import express from 'express';
-import { cancelDelivery, deliveryRequest, deliveryRiderAtDropOff, deliveryRiderAtPickUp, findNewDriverForDelivery, searchAndAssignDriverToDelivery, startDelivery } from '../controllers/deliveryController';
+import { cancelDelivery, deliveryRequest, deliveryRiderAtDropOff, deliveryRiderAtPickUp, findNewDriverForDelivery, searchAndAssignDriverToDelivery, startDelivery } from '../controllers/deliveryController.js';
 
 const router = express.Router();
 
