@@ -27,6 +27,7 @@ export const addRideReview = async (req, res) => {
         const review = {
             userId: user.uid,
             bookingId,
+            bookingType: "ride",
             driverId,
             rating,
             comments : Array.isArray(comments) ? comments : [],
@@ -85,12 +86,86 @@ export const addRideReview = async (req, res) => {
 };
 
 export const addDeliveryReview = async (req, res) => {
-    const { } = req.body;
+    const user = req.user;
+
+    if (!user) {
+        return res.status(403).json({ error: "Unauthorized", success: false });
+    }
+
+    const { deliveryId, driverId, rating, comments = [] } = req.body;
+
+    if (!deliveryId || !driverId || !rating) {
+        return res.status(400).json({ error: "Booking ID, Driver ID, and Rating are required", success: false });
+    }
+
+    if (rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Rating must be between 1 and 5", success: false });
+    }
 
     try {
+        const review = {
+            userId: user.uid,
+            bookingId: deliveryId,
+            bookingType: "delivery",
+            driverId,
+            rating,
+            comments : Array.isArray(comments) ? comments : [],
+            createdAt: FieldValue.serverTimestamp()
+        };
+
+        const reviewRef = db.collection('reviews').doc();
+        await reviewRef.set(review);
+
+        const driverRef = db.collection('drivers').doc(driverId);
+        const driverDoc = await driverRef.get();
+
+        const deliveryRef = db.collection("deliveries").doc(deliveryId);
+        const deliveryDoc = await deliveryRef.get();
+
+        if (!driverDoc.exists ) {
+            return res.status(404).json({ error: "Driver not found", success: false });
+        }
+
+        if (!deliveryDoc.exists) {
+            return res.status(404).json({ error: "delivery not found", success: false });
+        }
+
+        const driverData = driverDoc.data();
+        const delivery = deliveryDoc.data();
+
+        const driverRating = ( driverData.ratingsSum + review.rating ) / (driverData.numberOfRatings + 1)
+       
+        const knownForArray = driverData.knownFor;
+        
+        let indexToRemove = knownForArray.indexOf("New Driver");
+        if (indexToRemove !== -1) {
+            knownForArray.splice(indexToRemove, 1);
+        }
+
+        comments.forEach((comment, idx) => {
+            if (!knownForArray.includes(comment)) {
+                knownForArray.push(comment);
+            }
+        })
+
+        await driverRef.update({
+            ratingsSum: FieldValue.increment(review.rating),
+            numberOfRatings: FieldValue.increment(1),
+            driverRating,
+            knownFor: knownForArray
+        });
+
+        await deliveryRef.update({
+            rated: true
+        })
+
+        sendDataToClient(delivery.driverId, "notification", { type: 'ratingReceived', notificationId:`${delivery?.driverId}-${Date.now()}`, message: `You have received a rating of ${rating}.` })
+
+        return res.status(201).json({ message: "Review added successfully", success: true});
 
     } catch (error) {
-        
+        console.error("Error adding review:", error);
+        res.status(500).json({ message: "Error adding review", success: false });
     }
 }
 

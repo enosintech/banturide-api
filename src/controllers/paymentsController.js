@@ -174,11 +174,89 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
 };
 
 export const confirmPaymentAndMarkDeliveryAsSuccessful = async (req, res) => {
-  const { } = req.body;
+  const user = req.user
+
+  if (!user) {
+    return res.status(403).json({ error: "Unauthorized", success: false });
+  }
+
+  const { deliveryId, amount } = req.body;
+
+  if (!deliveryId) {
+    return res.status(400).json({ error: "deliveryID is required", success: false });
+  }
+
+  if (!amount || isNaN(amount) || amount <= 0) {
+    return res.status(400).json({ error: "Invalid amount, amount must be number", success: false });
+  }
 
   try {
+    const deliveryRef = db.collection('deliveries').doc(deliveryId);
+    const deliveryDoc = await deliveryRef.get();
+
+    if (!deliveryDoc.exists) {
+      return res.status(404).json({
+        success: false,
+        message: "delivery not found.",
+      });
+    }
+
+    if(!deliveryDoc.data().driverArrivedAtDropoff) {
+      return res.status(404).json({
+        success: false,
+        messsage: "Driver has not arrived at the dropoff location."
+      })
+    }
+
+    const delivery = deliveryDoc.data();
+    const driverDistanceFromDropoff = calculateDistance(delivery.driverCurrentLocation, delivery.dropOffLocation);
+
+    if (driverDistanceFromDropoff > 1) {
+      return res.status(400).json({
+          success: false,
+          message: `Driver is ${driverDistanceFromDropoff.toFixed(2)} km away and is not close enough to the dropoff location to confirm payment.`,
+      });
+    }
+
+    const newPayment = {
+      bookingId: deliveryId,
+      amount,
+      paymentStatus: 'completed',
+      paymentType: delivery.paymentMethod,
+      createdAt: FieldValue.serverTimestamp()
+    };
+
+    const paymentRef = db.collection('payments').doc();
+    await paymentRef.set(newPayment);
+
+    const driverRef = db.collection("drivers").doc(delivery?.driverId);
+
+    await deliveryRef.update({ 
+      status: 'completed', 
+      paymentReceived: true
+    });
+
+    await driverRef.update(({
+      driverStatus: "available",
+      reservedBy: null,
+    }))
+
+    const updatedDeliverySnapshot = await deliveryRef.get();
+    const updatedDelivery = updatedDeliverySnapshot.data();
+
+    sendDataToClient(updatedDelivery.userId, "notification", { type: "paymentReceived", notificationId: `${deliveryId}-${Date.now()}`, title: "Ride Complete", message: "Your delivery is complete, Please remember to Rate your rider", booking: JSON.stringify(updatedDelivery) })
+
+    return res.status(200).json({
+      success: true,
+      message: "Payment confirmed and delivery marked as successful.",  
+    });
 
   } catch (error) {
+    console.error("Error in confirming payment and marking delivery as successful:", error);
 
+    return res.status(500).json({
+      success: false,
+      message: "Error in confirming payment and marking delivery as successful.",
+    });
   }
 }

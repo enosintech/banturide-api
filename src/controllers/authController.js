@@ -19,19 +19,16 @@ export const registerPassengerController = async (req, res) => {
     }
 
     try {
-        // Create user with email and password
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
         try {
-            // Check if the user already exists in Firestore
             const userDoc = await db.collection('users').doc(user.uid).get();
             if (userDoc.exists) {
-                await deleteUser(user); // Rollback user creation
+                await deleteUser(user); 
                 return res.status(400).json({ message: "User already exists", success: false });
             }
 
-            // Add user data to Firestore
             await db.collection('users').doc(user.uid).set({
                 userId: user.uid,
                 firstname,
@@ -53,7 +50,7 @@ export const registerPassengerController = async (req, res) => {
             });
 
         } catch (firestoreError) {
-            await deleteUser(user); // Rollback user creation in case of Firestore error
+            await deleteUser(user);
             console.log("Error saving user information to Database : ", firestoreError)
             return res.status(500).json({ 
                 message: "Failed to write user data to Firestore. User creation rolled back.", 

@@ -44,6 +44,7 @@ export const passengerBookingRequest = async (req, res) => {
         seats,
         paymentMethod,
         hasThirdStop,
+        bookingType: "ride",
         status: 'pending',
         paymentReceived: false,
         createdAt: FieldValue.serverTimestamp()
@@ -331,7 +332,7 @@ export const searchDriversForBooking = async (req, res) => {
             responseSent = true;
             return res.status(500).json({
                 success: false,
-                message: "Error in processing your request.",
+                message: "Error in searching drivers for booking.",
                 error: "internal server error",
             });
         }
@@ -341,6 +342,13 @@ export const searchDriversForBooking = async (req, res) => {
 export const assignDriverToBooking = async (req, res) => {
     const { bookingId, driverId } = req.body;
 
+    if(!bookingId || !driverId) {
+        return res.status(400).json({
+            success: false,
+            message: "Booking id and driver id are required"
+        })
+    }
+
     try {
         const bookingRef = db.collection('bookings').doc(bookingId);
         const driverRef = db.collection('drivers').doc(driverId);
@@ -348,10 +356,17 @@ export const assignDriverToBooking = async (req, res) => {
         const bookingSnapshot = await bookingRef.get();
         const driverSnapshot = await driverRef.get();
 
-        if (!bookingSnapshot.exists || !driverSnapshot.exists) {
+        if (!bookingSnapshot.exists) {
             return res.status(404).json({
                 success: false,
-                message: "Booking or driver not found.",
+                message: "Booking not found.",
+            });
+        }
+
+        if (!driverSnapshot.exists) {
+            return res.status(404).json({
+                success: false,
+                message: "Driver not found.",
             });
         }
 
@@ -725,7 +740,7 @@ export const driverAtPickupLocation = async (req, res) => {
         if (bookingData.status !== 'confirmed') {
             return res.status(400).json({
                 success: false,
-                message: "Booking not confirmed or invalid."
+                message: "Booking not confirmed."
             });
         }
 

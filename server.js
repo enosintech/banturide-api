@@ -25,7 +25,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "https://banturide-api.onrender.com",
-    }
+    },
+    connectionStateRecovery: {}
 })
 
 const connectedUsers = new Map();
