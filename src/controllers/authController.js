@@ -53,7 +53,7 @@ export const registerPassengerController = async (req, res) => {
             await deleteUser(user);
             console.log("Error saving user information to Database : ", firestoreError)
             return res.status(500).json({ 
-                message: "Failed to write user data to Firestore. User creation rolled back.", 
+                message: "An error occurred while registering user", 
                 success: false
             });
         }
@@ -167,7 +167,7 @@ export const signinController = async (req, res) => {
         const user = userCredential.user;
 
         // if (!user.emailVerified) {
-        //     return res.status(403).json({ message: "Email not verified", success: false });
+        //     return res.status(403).json({ message: "Please verify your email in order to log in", success: false });
         // }
 
         res.status(200).json({ message: "Logged in successfully", userCredential, success: true });
@@ -214,7 +214,7 @@ export const forgotPassword = async (req, res) => {
         await sendPasswordResetEmail(auth, email);
 
         res.status(200).json({
-            message: "Password reset email sent successfully",
+            message: "If an account with that email exists, a password reset link has been sent",
             success: true
         });
     } catch (error) {
@@ -222,7 +222,7 @@ export const forgotPassword = async (req, res) => {
         if (error.code === 'auth/invalid-email') {
             return res.status(400).json({ message: "Invalid email address", success: false });
         } else if (error.code === 'auth/user-not-found') {
-            return res.status(404).json({ message: "User not found", success: false });
+            return res.status(404).json({ message: "If an account with that email exists, a password reset link has been sent", success: false });
         } else {
             return res.status(500).json({ message: "An error occurred while sending password reset email", success: false });
         }
