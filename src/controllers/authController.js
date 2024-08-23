@@ -176,10 +176,8 @@ export const signinController = async (req, res) => {
         console.log("An error occured while loggin in ", error)
         if (error.code === 'auth/user-not-found') {
             return res.status(404).json({ message: "User not found", success: false });
-        } else if (error.code === 'auth/wrong-password') {
-            return res.status(401).json({ message: "Incorrect password", success: false });
-        } else if (error.code === 'auth/invalid-email') {
-            return res.status(400).json({ message: "Invalid email address", success: false });
+        } else if (error.code === 'auth/invalid-credential') {
+            return res.status(401).json({ message: "Incorrect username or password", success: false });
         } else {
             return res.status(500).json({ message: "An error occurred while logging in", success: false});
         }
