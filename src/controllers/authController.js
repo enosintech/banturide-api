@@ -178,6 +178,8 @@ export const signinController = async (req, res) => {
             return res.status(404).json({ message: "User not found", success: false });
         } else if (error.code === 'auth/invalid-credential') {
             return res.status(401).json({ message: "Incorrect username or password", success: false });
+        } else if (error.code === 'auth/too-many-requests'){
+            return res.status(500).json({ message: "Too many login attempts. Please reset password or try again later"})
         } else {
             return res.status(500).json({ message: "An error occurred while logging in", success: false});
         }
