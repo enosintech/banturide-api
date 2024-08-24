@@ -207,7 +207,7 @@ export const toggleDriverShouldCall = async (req, res) => {
     try {
         await db.collection('users').doc(user.uid).update({ driverShouldCall: value });
 
-        res.status(200).json({ message: "Driver Should Call Updated Successfully", value, success: true });
+        res.status(200).json({ message: "Driver Should Call Updated Successfully", value, success: false });
     } catch (error) {
         console.log("Error toggling driver should call", error)
         res.status(500).json({ error: "Error when obtaining profile details.", success: false });
