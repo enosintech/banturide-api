@@ -215,6 +215,7 @@ export const searchDriversForBooking = async (req, res) => {
 
         driverStatusUnsubscribe = db.collection('drivers')
             .where('driverStatus', '==', 'available')
+            .where("bookingClass", "==", booking?.bookingClass)
             .onSnapshot(snapshot => {
                 snapshot.docChanges().forEach(async (change) => {
                     if (change.type === "added" || change.type === "modified") {
