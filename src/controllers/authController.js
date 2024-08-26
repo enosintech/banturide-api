@@ -111,6 +111,8 @@ export const registerDriverController = async (req, res) => {
                 address,
                 role: 'driver',
                 driverStatus: 'unavailable',
+                canDeliver: true,
+                deliveryClass: "Express Regular",
                 isVerifiedDriver: false,
                 ratingsSum: 5.0,
                 numberOfRatings: 1,

@@ -182,7 +182,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
             if (!responseSent) {
                 responseSent = true;
                 sendDataToClient(delivery.userId, "notification", { notificationId: `${delivery.userId}-${Date.now()}`, type: "driversNotFoundOnTime", message: "No drivers found within the specified time." });
-                return res.status(404).json({ success: false, message: "No drivers found within the time limit." });
+                return res.status(200).json({ success: true, message: "No drivers found within the time limit." });
             }
         }, 120000);
 
