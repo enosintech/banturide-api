@@ -161,6 +161,7 @@ export const searchDriversForBooking = async (req, res) => {
         const searchDrivers = async () => {
             const availableDriversSnapshot = await db.collection('drivers')
                 .where('driverStatus', '==', 'available')
+                .where("bookingClass", "==", booking?.bookingClass)
                 .get();   
 
             availableDriversSnapshot.forEach(async doc => {
@@ -312,7 +313,7 @@ export const searchDriversForBooking = async (req, res) => {
 
                 if (foundDrivers.length === 0) {
                     sendDataToClient(booking.userId, "notification", { notificationId: `${booking.userId}-${Date.now()}`, type: 'driversNotFoundOnTime', message: "No drivers found within the specified time" });
-                    res.status(404).json({ success: false, message: "No drivers found within the time limit." });
+                    res.status(200).json({ success: true, message: "No drivers found within the time limit." });
                 } else {
                     sendDataToClient(booking.userId, "notification", { type: 'searchComplete', message: "Drivers were found and the search is complete" });
                     res.status(200).json({
