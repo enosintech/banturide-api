@@ -85,7 +85,6 @@ export const deliveryRequest = async (req, res ) => {
 };
 
 export const searchAndAssignDriverToDelivery = async (req, res) => {
-
     const { deliveryId } = req.body;
 
     if (!deliveryId) {
@@ -97,12 +96,13 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
 
     let responseSent = false;
     let searchTimeout;
+    let unsubscribe;
 
     try {
         const deliverySnapshot = await db.collection("deliveries").doc(deliveryId).get();
 
         if (!deliverySnapshot.exists) {
-            return res.status(404).json({ success: false, message: "Booking not found." });
+            return res.status(404).json({ success: false, message: "Delivery not found." });
         }
 
         const delivery = deliverySnapshot.data();
@@ -115,7 +115,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
             .where("deliveryClass", "==", delivery.deliveryClass)
             .get();
 
-        for (const doc of availableDriversSnapshot.docs) {
+        const assignDriver = async (doc) => {
             const driverData = doc.data();
             const distance = getDistanceFromLatLonInKm(
                 delivery?.pickUpLocation?.latitude,
@@ -126,16 +126,15 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
 
             if (distance < 3) {
                 const driverId = doc.id;
-
                 const driverRef = db.collection('drivers').doc(driverId);
-                const deliveryRef = db.collection('deliveries').doc(deliveryId);;
+                const deliveryRef = db.collection('deliveries').doc(deliveryId);
 
                 try {
                     await db.runTransaction(async (transaction) => {
                         const driverDoc = await transaction.get(driverRef);
 
-                        if (!driverDoc.exists) {
-                            throw new Error("Driver does not exist");
+                        if (!driverDoc.exists || driverDoc.data().driverStatus !== "available") {
+                            throw new Error("Driver does not exist or is no longer available");
                         }
 
                         transaction.update(driverRef, {
@@ -165,30 +164,51 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
 
                     if (!responseSent) {
                         responseSent = true;
-
                         if (searchTimeout) clearTimeout(searchTimeout);
+                        if (unsubscribe) unsubscribe();
 
                         return res.status(200).json({ success: true, message: "A driver has been found for your delivery", driver: driverDetails, booking: updatedBookingData });
                     }
-                    break; 
                 } catch (error) {
                     console.error("Failed to reserve driver for customer:", error);
-                    continue; 
                 }
             }
+        };
+
+        // Assign any existing drivers
+        for (const doc of availableDriversSnapshot.docs) {
+            await assignDriver(doc);
+            if (responseSent) break;
         }
 
-        searchTimeout = setTimeout(() => {
-            if (!responseSent) {
-                responseSent = true;
-                sendDataToClient(delivery.userId, "notification", { notificationId: `${delivery.userId}-${Date.now()}`, type: "driversNotFoundOnTime", message: "No drivers found within the specified time." });
-                return res.status(200).json({ success: true, message: "No drivers found within the time limit." });
-            }
-        }, 120000);
+        // Set up the real-time listener
+        if (!responseSent) {
+            unsubscribe = db.collection("drivers")
+                .where('driverStatus', "==", "available")
+                .where('canDeliver', '==', true)
+                .where("deliveryClass", "==", delivery.deliveryClass)
+                .onSnapshot(async (snapshot) => {
+                    for (const doc of snapshot.docs) {
+                        await assignDriver(doc);
+                        if (responseSent) break;
+                    }
+                });
+
+            // Set a timeout to stop searching after 2 minutes
+            searchTimeout = setTimeout(() => {
+                if (!responseSent) {
+                    responseSent = true;
+                    if (unsubscribe) unsubscribe();
+                    sendDataToClient(delivery.userId, "notification", { notificationId: `${delivery.userId}-${Date.now()}`, type: "driversNotFoundOnTime", message: "No drivers found within the specified time." });
+                    return res.status(200).json({ success: true, message: "No drivers found within the time limit." });
+                }
+            }, 120000);
+        }
 
     } catch (error) {
         console.error("Error in finding a driver for delivery: ", error);
         if (searchTimeout) clearTimeout(searchTimeout);
+        if (unsubscribe) unsubscribe();
 
         if (!responseSent) {
             responseSent = true;
