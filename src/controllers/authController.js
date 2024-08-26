@@ -112,6 +112,7 @@ export const registerDriverController = async (req, res) => {
                 role: 'driver',
                 driverStatus: 'unavailable',
                 canDeliver: true,
+                bookingClass: "Bantu Economy",
                 deliveryClass: "Express Regular",
                 isVerifiedDriver: false,
                 ratingsSum: 5.0,
