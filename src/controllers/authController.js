@@ -46,7 +46,8 @@ export const registerPassengerController = async (req, res) => {
 
             return res.status(201).json({ 
                 message: "User created successfully. Please verify your email.", 
-                success: true
+                success: true,
+                userCredential
             });
 
         } catch (firestoreError) {
@@ -128,7 +129,7 @@ export const registerDriverController = async (req, res) => {
 
             await sendEmailVerification(user);
 
-            return res.status(201).json({ message: "Driver registered successfully. Verify your Email", success: false });
+            return res.status(201).json({ message: "Driver registered successfully. Verify your Email", success: true, userCredential });
 
         } catch (firestoreError) {
             await deleteUser(user);
