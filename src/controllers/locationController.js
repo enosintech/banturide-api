@@ -202,7 +202,7 @@ export const updateDeliveryLocation = async (req, res) => {
 
         });
 
-        return res.status(200).json({ success: true, message: "Driver location update process started" });
+        return res.status(200).json({ success: true, message: "Delivery location update process started" });
 
     } catch (error) {
         console.error("Error getting trip location:", error);

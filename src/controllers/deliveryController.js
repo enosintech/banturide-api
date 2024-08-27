@@ -272,7 +272,7 @@ export const findNewDriverForDelivery = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "delivery pending new rider",
+            message: "your delivery is pending new rider",
             booking: updatedDelivery,
         })
 
