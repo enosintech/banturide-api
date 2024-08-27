@@ -142,7 +142,7 @@ export const updateDeliveryLocation = async (req, res) => {
     const { deliveryId, driverId } = req.body;
 
     if (!deliveryId || !driverId) {
-        return res.status(400).json({ error: "deliveryID and DriverID are required" });
+        return res.status(400).json({ error: "deliveryID and DriverID are required", success: false });
     }
 
     try {
