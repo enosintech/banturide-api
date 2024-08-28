@@ -57,7 +57,7 @@ export const getUserProfile = async (req, res) => {
 
         const userData = {
             userId: user.uid,
-            emailVerified: user.emailVerified ,
+            isVerified: user.emailVerified || "field is empty",
             ...userDoc.data(),
         }
 
