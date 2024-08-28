@@ -57,6 +57,7 @@ export const getUserProfile = async (req, res) => {
 
         const userData = {
             userId: user.uid,
+            emailVerified: user.emailVerified ,
             ...userDoc.data(),
         }
 
@@ -248,6 +249,43 @@ export const editDriverProfile = async (req, res) => {
     }
 
 };
+
+export const updateDriverInfo = async (req, res) => {
+    const user = req.user;
+
+    if(!user) {
+        return res.status(403).json({ error: "Unauthorized", success: false})
+    }
+
+    const { } = req.body;
+    
+    const driverRef = db.collection('drivers').doc(user.uid);
+
+    try {
+        await driverRef.update({
+            nrc,
+            driversLicense,
+            insuranceNumber,
+            vehicleReg,
+            carModel,
+            carManufacturer,
+            carColor,
+            seats,
+            bookingClass,
+            canDriver,
+            canDeliver,
+            bookingClass,
+            deliveryClass,
+        })
+
+        const updatedDriver = await driverRef.get();
+
+        return res.status(200).json({ driver: updatedDriver, message: "Driver information updated successfully", success: true })
+    } catch (error) {
+        console.error(error)
+        return res.status(500).json({ message: "Error updating driver profile details", error: error, success: false })
+    }
+}
 
 // Toggle driver availability
 export const toggleDriverAvailability = async (req, res) => {
