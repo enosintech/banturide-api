@@ -12,7 +12,10 @@ import {
     getDriverInfo,
     getTotalEarnings,
     updateDriverStatus,
-    getDriverStatistics
+    getDriverStatistics,
+    updateDriverInfo,
+    uploadDriverProfilePicture,
+    removeDriverProfilePicture
 } from '../controllers/profileController.js';
 import { verifyUser } from '../middleware/index.js';
 
@@ -30,6 +33,9 @@ router.post('/toggle-driver-should-call', toggleDriverShouldCall);
 
 // Define routes DRIVERS
 router.put('/edit-driver', editDriverProfile); // Changed to use the current user
+router.post('/uploadDriverProfilePicture', uploadDriverProfilePicture);
+router.delete('/removeDriverProfilePicture', removeDriverProfilePicture);
+router.post('/upload-driver-info', updateDriverInfo);
 router.post('/toggle-driver-availability', toggleDriverAvailability); // Changed to use the current user
 router.get('/get-driver-info', getDriverInfo); // Changed to use the current user
 router.get('/get-driver-total-earnings', getTotalEarnings); // Get the total earnings of the driver

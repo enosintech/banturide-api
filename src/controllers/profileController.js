@@ -239,7 +239,6 @@ export const editDriverProfile = async (req, res) => {
             phoneNumber,
             nrcNumber,
             address,
-            vehicleInfo
         });
         const updatedDriver = await driverRef.get();
 
@@ -250,14 +249,100 @@ export const editDriverProfile = async (req, res) => {
 
 };
 
+export const uploadDriverProfilePicture = async (req, res) => {
+
+    const user = req.user;
+
+    if (!user) {
+        return res.status(403).json({ error: "Unauthorized", success: false });
+    }
+
+    upload(req, res, async (err) => {
+        if (err) {
+            console.error("Upload error:", err);
+            return res.status(400).json({ success: false, error: "File upload error"});
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
+        }
+
+        try {
+            const uploadResponse = await cloudinary.uploader.upload(req.file.path, { public_id: `profile_${user.uid}` });
+
+            if (!uploadResponse || !uploadResponse.secure_url) {
+                return res.status(500).json({ success: false, error: 'Cloudinary upload failed or returned invalid response' });
+            }
+
+            await db.collection('drivers').doc(user.uid).update({ avatar: uploadResponse.secure_url });
+
+            res.status(200).json({ message: "Profile picture uploaded successfully", success: true});
+        } catch (error) {
+            console.log("Error uploading profile picture", error)
+            res.status(500).json({ error: "Error when obtaining profile details.", success: false });
+        }
+    });
+    
+};
+
+// Remove profile picture
+export const removeDriverProfilePicture = async (req, res) => {
+
+    const user = req.user;
+
+    if (!user) {
+        return res.status(403).json({ error: "Unauthorized", success: false });
+    }
+
+    try {
+        const userDoc = await db.collection('drivers').doc(user.uid).get();
+        if (!userDoc.exists) {
+            return res.status(400).json({ error: "User not found", success: false });
+        }
+
+        if(!userDoc.data().avatar){
+            return res.status(400).json({ error: "No profile picture to remove ", success: false});
+        }
+
+        const publicId = userDoc.data().avatar.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+
+        await db.collection('drivers').doc(user.uid).update({ avatar: null });
+
+        res.status(200).json({ message: "profile picture successfully removed", success: true });
+    } catch (error) {
+        console.log("Error removing profile picture", error)
+        res.status(500).json({ error: "Error when obtaining profile details.", success: false });
+    }
+
+};
+
 export const updateDriverInfo = async (req, res) => {
+
+    const {
+        nrc,
+        driversLicense,
+        insuranceNumber,
+        vehicleReg,
+        carModel,
+        carManufacturer,
+        carColor,
+        seats,
+        canDriver,
+        canDeliver,
+        bookingClass,
+        deliveryClass,
+    } = req.body;
+
     const user = req.user;
 
     if(!user) {
         return res.status(403).json({ error: "Unauthorized", success: false})
     }
 
-    const { } = req.body;
+    if (!nrc || !driversLicense || !insuranceNumber || !vehicleReg || !carModel || !carManufacturer || !carColor || !seats ) {
+        return res.status(400).json({ error: "Missing required fields", success: false });
+    }
     
     const driverRef = db.collection('drivers').doc(user.uid);
 
@@ -271,19 +356,28 @@ export const updateDriverInfo = async (req, res) => {
             carManufacturer,
             carColor,
             seats,
-            bookingClass,
             canDriver,
             canDeliver,
             bookingClass,
             deliveryClass,
+            isVerifiedDriver: true,
         })
 
-        const updatedDriver = await driverRef.get();
+        const updatedDriverDoc = await driverRef.get();
+        const updatedDriver = updatedDriverDoc.data();
 
-        return res.status(200).json({ driver: updatedDriver, message: "Driver information updated successfully", success: true })
+        return res.status(200).json({
+            driver: updatedDriver,
+            message: "Driver information updated successfully",
+            success: true,
+        });
     } catch (error) {
-        console.error(error)
-        return res.status(500).json({ message: "Error updating driver profile details", error: error, success: false })
+        console.error('Error updating driver profile details:', error);
+        return res.status(500).json({
+            message: "Error updating driver profile details",
+            error: error.message,
+            success: false,
+        });
     }
 }
 

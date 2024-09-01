@@ -96,7 +96,7 @@ export const registerDriverController = async (req, res) => {
         const user = userCredential.user;
 
         try {
-            const userDoc = await db.collection('users').doc(user.uid).get();
+            const userDoc = await db.collection('drivers').doc(user.uid).get();
             if (userDoc.exists) {
                 await deleteUser(user);
                 return res.status(400).json({ message: "User already exists", success: false });
@@ -110,11 +110,9 @@ export const registerDriverController = async (req, res) => {
                 email,
                 phoneNumber,
                 address,
+                avatar: null,
                 role: 'driver',
                 driverStatus: 'unavailable',
-                canDeliver: true,
-                bookingClass: "Bantu Economy",
-                deliveryClass: "Express Regular",
                 isVerifiedDriver: false,
                 ratingsSum: 5.0,
                 numberOfRatings: 1,
