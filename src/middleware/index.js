@@ -24,7 +24,6 @@ const refreshIdToken = async ( refreshToken ) => {
 
         if(!response.ok) {
             console.log("Failed to refresh token")
-            console.log(refreshToken)
         }
 
         const data = await response.json();
@@ -39,7 +38,7 @@ export const verifyUser = async ( req, res, next ) => {
     const idToken = req.headers.authorization?.split('Bearer ')[1];
 
     if(!idToken){
-        return res.status(401).json({error: "No Token Provided for Verification"});
+        return res.status(401).json({ success: false, message: "Unauthorized", info: "No token provided"})
     }
 
     try {
@@ -50,7 +49,7 @@ export const verifyUser = async ( req, res, next ) => {
         if(error.code === "auth/id-token-expired") {
             const refreshToken = req.headers['x-refresh-token'];
             if(!refreshToken){
-                return res.status(401).send("No Token Provided for Token Refresh");
+                return res.status(401).json({ success: false, message: "Unauthorized", info: "No token provided"})
             }
 
             try {
@@ -60,10 +59,10 @@ export const verifyUser = async ( req, res, next ) => {
                 req.user = decodedToken;
                 next();
             } catch (refreshError) {
-                return res.status(401).send("Refresh Error in token expired block")
+                return res.status(401).json({ success: false, message: "Unauthorized", info: "Refresh error in token expired block"})
             }
         } else {
-            return res.status(401).send("Unauthorized")
+            return res.status(401).json({ success: false, message: "Unauthorized"})
         }
     }
 }
