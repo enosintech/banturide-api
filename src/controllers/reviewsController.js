@@ -76,9 +76,13 @@ export const addRideReview = async (req, res) => {
             rated: true
         })
 
+        const updatedBookingDoc = await bookingRef.get();
+
+        const updatedBooking = updatedBookingDoc.data();
+
         sendDataToClient(booking.driverId, "notification", { type: 'ratingReceived', notificationId:`${booking?.driverId}-${Date.now()}`, message: `You have received a rating of ${rating}.` })
 
-        res.status(201).json({ message: "Review added successfully", success: true});
+        res.status(201).json({ message: "Review added successfully", success: true, booking: updatedBooking});
     } catch (error) {
         console.error("Error adding review:", error);
         res.status(500).json({ message: "Error adding review", success: false });
@@ -159,9 +163,13 @@ export const addDeliveryReview = async (req, res) => {
             rated: true
         })
 
+        const updatedDeliveryDoc = await deliveryRef.get();
+
+        const updatedDelivery = updatedDeliveryDoc.data();
+
         sendDataToClient(delivery.driverId, "notification", { type: 'ratingReceived', notificationId:`${delivery?.driverId}-${Date.now()}`, message: `You have received a rating of ${rating}.` })
 
-        return res.status(201).json({ message: "Review added successfully", success: true});
+        return res.status(201).json({ message: "Review added successfully", success: true, booking: updatedDelivery});
 
     } catch (error) {
         console.error("Error adding review:", error);
