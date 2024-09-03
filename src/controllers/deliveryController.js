@@ -53,6 +53,7 @@ export const deliveryRequest = async (req, res ) => {
 
     if ( hasThirdStop && thirdStopLatitude && thirdStopLongitude ) {
         newDelivery.thirdStopLocation = { latitude: thirdStopLatitude, longitude: thirdStopLongitude };
+        newDelivery.reachedThirdStop = false;
     }
 
     try {
@@ -457,6 +458,63 @@ export const startDelivery = async ( req, res ) => {
         });
     }
 }
+
+
+export const arrivedFirstStopDelivery = async (req, res) => {
+    
+    const { deliveryId } = req.body;
+
+    if(!deliveryId){
+        return res.status(400).json({
+            success: false,
+            message: "deliveryId is required"
+        })
+    }
+
+    try {
+        const deliveryRef = db.collection('deliveries').doc(deliveryId);
+        const deliverySnapshot = await deliveryRef.get();
+
+        if (!deliverySnapshot.exists) {
+            return res.status(400).json({
+                success: false,
+                message: "Delivery Not Found",
+            });
+        }
+
+        const deliveryData = deliverySnapshot.data();
+
+        if (!deliveryData.hasThirdStop) {
+            return res.status(400).json({
+                success: false,
+                message: "Delivery does not have additional stop"
+            });
+        }
+
+        await deliveryRef.update({
+            reachedThirdStop: true,
+        });
+
+        const updatedDeliverySnapshot = await deliveryRef.get();
+        const updatedDelivery = updatedDeliverySnapshot.data();
+
+        sendDataToClient(updatedDelivery.userId, "notification", { notificationId: `${updatedDelivery.userId}-${Date.now()}`, type: 'arrivedFirstStop', message: "You have arrived at your first Stop", booking: JSON.stringify(updatedDelivery) })
+
+        return res.status(200).json({
+            success: true,
+            message: "First stop set to arrived successfully.",
+        });
+
+
+    } catch (error) {
+        console.error("Error in arriving at first stop:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error in arriving at first stop.",
+            error: "internal Server Error"
+        });
+    }
+};
 
 export const deliveryRiderAtDropOff = async (req, res) => {
     const { deliveryId } = req.body;

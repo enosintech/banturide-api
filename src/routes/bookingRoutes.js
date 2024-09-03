@@ -11,6 +11,7 @@ import {
     addStop,
     changeDestination,
     findNewDriver,
+    arrivedFirstStop,
 } from "../controllers/bookingController.js";
 import { verifyUser } from "../middleware/index.js";
 
@@ -30,6 +31,7 @@ router.post("/find-new-driver", findNewDriver);
 // Driver post routes
 router.post("/driver-at-pickup-location", driverAtPickupLocation);
 router.post("/start-ride", startRide);
+router.post("/arrived-first-stop", arrivedFirstStop);
 router.post("/end-ride", endRide);
 
 export default router;

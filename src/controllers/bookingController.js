@@ -53,6 +53,7 @@ export const passengerBookingRequest = async (req, res) => {
 
     if (hasThirdStop && thirdStopLatitude && thirdStopLongitude) {
         newBooking.thirdStopLocation = { latitude: thirdStopLatitude, longitude: thirdStopLongitude };
+        newBooking.reachedThirdStop = false;
     }
 
     try {
@@ -821,6 +822,62 @@ export const startRide = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Error in starting the ride.",
+            error: "internal Server Error"
+        });
+    }
+};
+
+export const arrivedFirstStop = async (req, res) => {
+    
+    const { bookingId } = req.body;
+
+    if(!bookingId){
+        return res.status(400).json({
+            success: false,
+            message: "bookingId is required"
+        })
+    }
+
+    try {
+        const bookingRef = db.collection('bookings').doc(bookingId);
+        const bookingSnapshot = await bookingRef.get();
+
+        if (!bookingSnapshot.exists) {
+            return res.status(400).json({
+                success: false,
+                message: "Booking Not Found",
+            });
+        }
+
+        const bookingData = bookingSnapshot.data();
+
+        if (!bookingData.hasThirdStop) {
+            return res.status(400).json({
+                success: false,
+                message: "Booking does not have additional stop"
+            });
+        }
+
+        await bookingRef.update({
+            reachedThirdStop: true,
+        });
+
+        const updatedBookingSnapshot = await bookingRef.get();
+        const updatedBooking = updatedBookingSnapshot.data();
+
+        sendDataToClient(updatedBooking.userId, "notification", { notificationId: `${updatedBooking.userId}-${Date.now()}`, type: 'arrivedFirstStop', message: "You have arrived at your first Stop", booking: JSON.stringify(updatedBooking) })
+
+        return res.status(200).json({
+            success: true,
+            message: "First stop set to arrived successfully.",
+        });
+
+
+    } catch (error) {
+        console.error("Error in arriving at first stop:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error in arriving at first stop.",
             error: "internal Server Error"
         });
     }

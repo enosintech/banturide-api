@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { cancelDelivery, deliveryRequest, deliveryRiderAtDropOff, deliveryRiderAtPickUp, findNewDriverForDelivery, searchAndAssignDriverToDelivery, startDelivery } from '../controllers/deliveryController.js';
+import { arrivedFirstStopDelivery, cancelDelivery, deliveryRequest, deliveryRiderAtDropOff, deliveryRiderAtPickUp, findNewDriverForDelivery, searchAndAssignDriverToDelivery, startDelivery } from '../controllers/deliveryController.js';
 import { verifyUser } from '../middleware/index.js';
 
 const router = express.Router();
@@ -18,6 +18,8 @@ router.post("/cancel-delivery", cancelDelivery);
 router.post("/rider-arrived", deliveryRiderAtPickUp);
 
 router.post("/start-delivery", startDelivery);
+
+router.post("/arrived-first-stop-delivery", arrivedFirstStopDelivery);
 
 router.post("/end-delivery", deliveryRiderAtDropOff);
 
