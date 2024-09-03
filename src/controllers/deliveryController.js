@@ -38,7 +38,7 @@ export const deliveryRequest = async (req, res ) => {
     const newDelivery = {
         userId: user.uid,
         pickUpLocation: { latitude: pickUpLatitude, longitude: pickUpLongitude },
-        dropOffLocation: { latitude: pickUpLatitude, longitude: pickUpLongitude },
+        dropOffLocation: { latitude: dropOffLatitude, longitude: dropOffLongitude },
         price,
         paymentMethod,
         deliveryClass,
