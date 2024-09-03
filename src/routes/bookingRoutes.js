@@ -35,4 +35,3 @@ router.post("/arrived-first-stop", arrivedFirstStop);
 router.post("/end-ride", endRide);
 
 export default router;
-

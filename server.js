@@ -25,11 +25,23 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "https://banturide-api.onrender.com",
-    },
-    connectionStateRecovery: {}
+    }
 })
 
 const connectedUsers = new Map();
+const messageBuffer = new Map();
+const textMessageBuffer = new Map();
+
+const bufferMessage = (userId, event, data) => {
+    messageBuffer.set(userId, { event, data });
+};
+
+const bufferTextMessage = (userId, event, data) => {
+    if (!textMessageBuffer.has(userId)) {
+        textMessageBuffer.set(userId, []);
+    }
+    textMessageBuffer.get(userId).push({ event, data });
+};
 
 const sendDataToClient = (userId, event, data) => {
     const user = connectedUsers.get(userId);
@@ -37,13 +49,12 @@ const sendDataToClient = (userId, event, data) => {
         io.to(user.socketId).emit(event, data);
         console.log(`Sent data to ${userId}:`, data);
     } else {
-        console.log(`User with ID ${userId} is not connected`);
+        console.log(`User with ID ${userId} is not connected. Buffering Message.`);
+        bufferMessage(userId, event, data);
     }
 }
 
 io.on("connection", (socket) => {
-    console.log("Client Connected Successfully:", socket.id)
-
     socket.on("register", ({ userId, userType}) => {
         try {
             if (!userId || !userType) {
@@ -53,6 +64,20 @@ io.on("connection", (socket) => {
             connectedUsers.set(userId, { socketId: socket.id, userType });
             console.log(`User Registered: ${userId}, Type: ${userType}`);
             console.log(connectedUsers);
+
+            if (messageBuffer.has(userId)) {
+                const { event, data } = messageBuffer.get(userId);
+                io.to(socket.id).emit(event, data);
+                messageBuffer.delete(userId);
+            }
+
+            if (textMessageBuffer.has(userId)) {
+                const messages = textMessageBuffer.get(userId);
+                messages.forEach(({ event, data }) => {
+                    io.to(socket.id).emit(event, data);
+                });
+                textMessageBuffer.delete(userId);
+            }
 
             socket.emit('connectionAcknowledged', {
                 status: 'success',
@@ -75,7 +100,8 @@ io.on("connection", (socket) => {
             io.to(recipient.socketId).emit('message', { text, senderId, recipientId, time, id });
             console.log(`Message sent from ${senderId} to ${recipientId}: ${text} at ${time}.`);
         } else {
-            console.log(`Recipient ${recipientId} is not connected`);
+            console.log(`Recipient ${recipientId} is not connected. Buffering Texts`);
+            bufferTextMessage(recipientId, 'message', { text, senderId, recipientId, time, id})
         }
     });
 
