@@ -73,9 +73,9 @@ export const registerPassengerController = async (req, res) => {
 };
 
 export const registerDriverController = async (req, res) => {
-    const { email, password, firstname, lastname, dob, phoneNumber, address } = req.body;
+    const { email, password, firstname, lastname, gender, dob } = req.body;
 
-    if (!email || !password || !firstname || !lastname || !dob || !phoneNumber || !address) {
+    if (!email || !password || !firstname || !lastname || !dob || !gender ) {
         return res.status(422).json({
             message: "Missing required fields",
             fields: {
@@ -83,9 +83,8 @@ export const registerDriverController = async (req, res) => {
                 password: !password ? "Password is required" : undefined,
                 firstname: !firstname ? "First name is required" : undefined,
                 lastname: !lastname ? "Last name is required" : undefined,
+                gender: !gender ? "Gender is required" : undefined,
                 dob: !dob ? "Date of birth is required" : undefined,
-                phoneNumber: !phoneNumber ? "Phone number is required" : undefined,
-                address: !address ? "Address is required" : undefined,
             },
             success: false
         });
@@ -108,8 +107,7 @@ export const registerDriverController = async (req, res) => {
                 lastname,
                 dob,
                 email,
-                phoneNumber,
-                address,
+                gender,
                 avatar: null,
                 role: 'driver',
                 driverStatus: 'unavailable',
