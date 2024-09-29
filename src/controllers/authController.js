@@ -4,15 +4,6 @@ const auth = getAuth();
 
 export const registerDriverController = async (req, res) => {
 
-    const user = req.user;
-
-    if(!user) {
-        return res.status(401).json({
-            success: false,
-            message: "Unauthorized"
-        })
-    }
-
     const { phoneNumber, firstname, lastname, gender, dob } = req.body;
 
     if(!phoneNumber || !firstname || !lastname || !gender || !dob ) {
