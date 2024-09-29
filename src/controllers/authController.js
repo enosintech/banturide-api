@@ -54,6 +54,7 @@ export const registerDriverController = async (req, res) => {
         return res.status(201).json({ message: "Driver registered successfully.", success: true, })
 
     } catch (error) {
+        console.error(error)
         return res.status(500).json({ message: "An error occured during sign up", success: false })
     }
 }
