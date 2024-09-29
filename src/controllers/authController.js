@@ -6,6 +6,8 @@ export const registerDriverController = async (req, res) => {
 
     const { phoneNumber, firstname, lastname, gender, dob } = req.body;
 
+    console.log(phoneNumber, firstname, lastname, gender, dob )
+
     if(!phoneNumber || !firstname || !lastname || !gender || !dob ) {
         return res.status(422).json({
             message: "Missing required fields",
