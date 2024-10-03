@@ -275,7 +275,7 @@ export const verifyDriverProfile = async (req, res) => {
         return res.status(403).json({ error: "Unauthorized", success: false})
     }
 
-    if (!avatar || !nrc || !licenseNumber || !licenseExpiry || !vehicleReg || !carMake || !carModel || !carColor || !seats || !vehicleImage1 || !vehicleImage2 || insuranceCertificateImage ) {
+    if (!avatar || !nrc || !licenseNumber || !licenseExpiry || !vehicleReg || !carMake || !carModel || !carColor || !seats || !vehicleImage1 || !vehicleImage2 || !insuranceCertificateImage ) {
         return res.status(400).json({ error: "Missing required fields", success: false });
     }
     
