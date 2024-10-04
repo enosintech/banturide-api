@@ -34,7 +34,7 @@ router.post('/toggle-driver-should-call', toggleDriverShouldCall);
 router.put('/edit-driver', editDriverProfile); // Changed to use the current user
 router.get('/get-driver-info', getDriverInfo); // Changed to use the current user
 router.post('/verify-driver-profile', verifyDriverProfile);
-router.post("/check-application-status", checkDriverApplication);
+router.get("/check-application-status", checkDriverApplication);
 router.post('/toggle-driver-availability', toggleDriverAvailability); // Changed to use the current user
 router.get('/get-driver-total-earnings', getTotalEarnings); // Get the total earnings of the driver
 router.post('/update-driver-status', updateDriverStatus); // Update the driver's status
