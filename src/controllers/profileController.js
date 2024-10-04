@@ -367,7 +367,7 @@ export const checkDriverApplication = async (req, res) => {
         if (driverVerificationStatus === "approved") {
             return res.status(200).json({ success: true, message: "Driver verified successfully." });
         } else if (driverVerificationStatus === "failed") {
-            return res.status(400).json({ success: false, message: "Driver application failed."  });
+            return res.status(200).json({ success: true, message: "Driver application failed."  });
         } else if (driverVerificationStatus === "pending") {
             return res.status(200).json({ success: true, message: "Application is still pending." });
         } else {
