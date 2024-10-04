@@ -344,6 +344,42 @@ export const verifyDriverProfile = async (req, res) => {
     }
 }
 
+export const checkDriverApplication = async (req, res) => {
+    const user = req.user;
+
+    if (!user) {
+        return res.status(403).json({ success: false, error: "Unauthorized" });
+    }
+
+    try {
+        const applicationsSnapshot = await db.collection("driver-applications")
+            .where("driverId", "==", user.uid)
+            .get();
+
+        if (applicationsSnapshot.empty) {
+            return res.status(404).json({ success: false, message: "Application not found." });
+        }
+
+        const applicationDoc = applicationsSnapshot.docs[0];
+        const applicationData = applicationDoc.data();
+        const { driverVerificationStatus } = applicationData;
+
+        if (driverVerificationStatus === "approved") {
+            return res.status(200).json({ success: true, message: "Driver verified successfully." });
+        } else if (driverVerificationStatus === "failed") {
+            return res.status(400).json({ success: false, message: "Driver application failed."  });
+        } else if (driverVerificationStatus === "pending") {
+            return res.status(200).json({ success: true, message: "Application is still pending." });
+        } else {
+            return res.status(400).json({ success: false, message: "Invalid verification status." });
+        }
+
+    } catch (error) {
+        console.error("Error processing application:", error);
+        return res.status(500).json({ success: false, error: "Internal server error." });
+    }
+};
+
 export const toggleDriverAvailability = async (req, res) => {
 
     const user = req.user;
