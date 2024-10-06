@@ -76,6 +76,7 @@ export const approveDriverApplication = async (req, res) => {
 };
 
 export const denyDriverApplication = async (req, res) => {
+    
     const user = req.user;
 
     // Uncomment this if user authentication is required
