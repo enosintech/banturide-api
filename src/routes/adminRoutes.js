@@ -1,7 +1,7 @@
 import express from "express";
 
-import { approveDriverApplication, denyDriverApplication } from "../controllers/adminController";
-import { verifyUser } from "../middleware";
+import { approveDriverApplication, denyDriverApplication } from "../controllers/adminController.js";
+import { verifyUser } from "../middleware/index.js";
 
 const router = express.Router();
 
