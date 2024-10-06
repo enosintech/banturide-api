@@ -5,17 +5,6 @@ import { db } from "../config/firebase.js";
 import { sendDataToClient } from "../../server.js";
 
 export const approveDriverApplication = async (req, res) => {
-
-    const user = req.user;
-
-    // Uncomment this if user authentication is required
-    // if (!user) {
-    //     return res.status(401).json({
-    //         success: false,
-    //         message: "Unauthorized"
-    //     });
-    // }
-
     const { applicationId, driverId, bookingClass, deliveryClass } = req.body;
 
     if (!applicationId || !driverId) {
@@ -27,36 +16,41 @@ export const approveDriverApplication = async (req, res) => {
 
     try {
         await db.runTransaction(async (transaction) => {
+            // Perform all reads first
             const applicationRef = db.collection('driver-applications').doc(applicationId);
-            const applicationDoc = await transaction.get(applicationRef);
+            const driverRef = db.collection('drivers').doc(driverId);
 
+            const [applicationDoc, driverDoc] = await Promise.all([
+                transaction.get(applicationRef),
+                transaction.get(driverRef)
+            ]);
+
+            // Validate the reads
             if (!applicationDoc.exists) {
                 throw new Error("Driver application not found");
             }
-
-            transaction.update(applicationRef, {
-                driverVerificationStatus: 'approved'
-            });
-
-            const driverRef = db.collection('drivers').doc(driverId);
-            const driverDoc = await transaction.get(driverRef);
 
             if (!driverDoc.exists) {
                 throw new Error("Driver not found");
             }
 
-            const updateData = {
+            // Prepare update data for driver
+            const driverUpdateData = {
                 driverVerificationStatus: 'approved'
             };
 
             if (bookingClass) {
-                updateData.bookingClass = bookingClass;
+                driverUpdateData.bookingClass = bookingClass;
             }
             if (deliveryClass) {
-                updateData.deliveryClass = deliveryClass;
+                driverUpdateData.deliveryClass = deliveryClass;
             }
 
-            transaction.update(driverRef, updateData);
+            // After all reads are complete, perform the writes
+            transaction.update(applicationRef, {
+                driverVerificationStatus: 'approved'
+            });
+            transaction.update(driverRef, driverUpdateData);
         });
 
         return res.status(200).json({
@@ -76,17 +70,6 @@ export const approveDriverApplication = async (req, res) => {
 };
 
 export const denyDriverApplication = async (req, res) => {
-    
-    const user = req.user;
-
-    // Uncomment this if user authentication is required
-    // if (!user) {
-    //     return res.status(401).json({
-    //         success: false,
-    //         message: "Unauthorized"
-    //     });
-    // }
-
     const { driverId, applicationId, reason } = req.body;
 
     if (!driverId || !applicationId || !reason) {
@@ -98,29 +81,32 @@ export const denyDriverApplication = async (req, res) => {
 
     try {
         await db.runTransaction(async (transaction) => {
+            // Perform all reads first
             const applicationRef = db.collection('driver-applications').doc(applicationId);
-            const applicationDoc = await transaction.get(applicationRef);
+            const driverRef = db.collection('drivers').doc(driverId);
 
+            const [applicationDoc, driverDoc] = await Promise.all([
+                transaction.get(applicationRef),
+                transaction.get(driverRef)
+            ]);
+
+            // Validate the reads
             if (!applicationDoc.exists) {
                 throw new Error("Driver application not found");
             }
-
-            transaction.update(applicationRef, {
-                driverVerificationStatus: 'failed',
-                reason
-            });
-
-            const driverRef = db.collection('drivers').doc(driverId);
-            const driverDoc = await transaction.get(driverRef);
 
             if (!driverDoc.exists) {
                 throw new Error("Driver not found");
             }
 
-            transaction.update(driverRef, {
+            // After all reads are complete, perform the writes
+            const updateData = {
                 driverVerificationStatus: 'failed',
                 reason
-            });
+            };
+
+            transaction.update(applicationRef, updateData);
+            transaction.update(driverRef, updateData);
         });
 
         return res.status(200).json({
