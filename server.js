@@ -13,6 +13,7 @@ import favoritesRoutes from './src/routes/favoritesRoutes.js';
 import reviewRoutes from "./src/routes/reviewRoutes.js";
 import deliveryRoutes from "./src/routes/deliveryRoutes.js";
 import adminRoutes from "./src/routes/adminRoutes.js";
+import complaintRoutes from "./src/routes/complaintsRoutes.js";
 
 dotenv.config();
 
@@ -125,6 +126,7 @@ app.use("/profile", profileRoutes);
 app.use("/favorites", favoritesRoutes);
 app.use("/reviews", reviewRoutes);
 app.use("/admin", adminRoutes)
+app.use("/complain", complaintRoutes)
 
 server.listen(PORT, () => {
     console.log(`Server is running on PORT ${PORT}`)
