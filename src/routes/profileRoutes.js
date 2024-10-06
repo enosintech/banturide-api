@@ -3,11 +3,8 @@ import express from 'express';
 import {
     getUserProfile,
     editUserName,
-    uploadProfilePicture,
-    removeProfilePicture,
     toggleNotifications,
     toggleDriverShouldCall,
-    editDriverProfile,
     toggleDriverAvailability,
     getDriverInfo,
     getTotalEarnings,
@@ -16,6 +13,7 @@ import {
     verifyDriverProfile,
     checkDriverApplication,
 } from '../controllers/profileController.js';
+
 import { verifyUser } from '../middleware/index.js';
 
 const router = express.Router();
@@ -25,13 +23,10 @@ router.use(verifyUser);
 // Define routes USERS
 router.get('/get-user-profile', getUserProfile); // Changed to use the current user
 router.post('/edit-username', editUserName);
-router.post('/uploadUserProfilePicture', uploadProfilePicture);
-router.delete('/removeUserProfilePicture', removeProfilePicture);
 router.post('/toggle-notifications', toggleNotifications);
 router.post('/toggle-driver-should-call', toggleDriverShouldCall);
 
 // Define routes DRIVERS
-router.put('/edit-driver', editDriverProfile); // Changed to use the current user
 router.get('/get-driver-info', getDriverInfo); // Changed to use the current user
 router.post('/verify-driver-profile', verifyDriverProfile);
 router.get("/check-application-status", checkDriverApplication);

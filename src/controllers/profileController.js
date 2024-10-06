@@ -1,44 +1,6 @@
-import { fileURLToPath } from 'url';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-
-import { db } from "../config/firebase.js";
-import cloudinary from "../config/cloudinary.js";
 import { FieldValue } from 'firebase-admin/firestore';
 
-// Ensure uploads directory exists
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const uploadsDir = path.join(__dirname, '..', 'uploads');
-
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
-}
-
-// Multer configuration for file uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-        cb(null, `${file.fieldname}-${Date.now()}${path.extname(file.originalname)}`);
-    }
-});
-
-const upload = multer({
-    storage: storage,
-    fileFilter: (req, file, cb) => {
-        const filetypes = /jpeg|jpg|png/;
-        const mimetype = filetypes.test(file.mimetype);
-        const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-        if (mimetype && extname) {
-            return cb(null, true);
-        } else {
-            cb('Error: Images Only!');
-        }
-    }
-}).single('avatar');
+import { db } from "../config/firebase.js";
 
 // passenger controllers
 
@@ -51,14 +13,13 @@ export const getUserProfile = async (req, res) => {
     }
 
     try {
-        const userDoc = await db.collection('users').doc(user.uid).get();
+        const userDoc = await db.collection('passengers').doc(user.uid).get();
         if (!userDoc.exists) {
             return res.status(404).json({ error: "User not found", success: false });
         }
 
         const userData = {
             userId: user.uid,
-            isVerified: user.email_verified,
             ...userDoc.data(),
         }
 
@@ -67,75 +28,6 @@ export const getUserProfile = async (req, res) => {
         console.error("Error when obtaining user profile details", error)
         res.status(500).json({ error: "Error when obtaining profile details.", success: false });
     }
-};
-
-// Upload profile picture
-export const uploadProfilePicture = async (req, res) => {
-
-    const user = req.user;
-
-    if (!user) {
-        return res.status(403).json({ error: "Unauthorized", success: false });
-    }
-
-    upload(req, res, async (err) => {
-        if (err) {
-            console.error("Upload error:", err);
-            return res.status(400).json({ success: false, error: "File upload error"});
-        }
-
-        if (!req.file) {
-            return res.status(400).json({ success: false, error: 'No file uploaded' });
-        }
-
-        try {
-            const uploadResponse = await cloudinary.uploader.upload(req.file.path, { public_id: `profile_${user.uid}` });
-
-            if (!uploadResponse || !uploadResponse.secure_url) {
-                return res.status(500).json({ success: false, error: 'Cloudinary upload failed or returned invalid response' });
-            }
-
-            await db.collection('users').doc(user.uid).update({ avatar: uploadResponse.secure_url });
-
-            res.status(200).json({ message: "Profile picture uploaded successfully", success: true});
-        } catch (error) {
-            console.log("Error uploading profile picture", error)
-            res.status(500).json({ error: "Error when obtaining profile details.", success: false });
-        }
-    });
-    
-};
-
-// Remove profile picture
-export const removeProfilePicture = async (req, res) => {
-
-    const user = req.user;
-
-    if (!user) {
-        return res.status(403).json({ error: "Unauthorized", success: false });
-    }
-
-    try {
-        const userDoc = await db.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
-            return res.status(400).json({ error: "User not found", success: false });
-        }
-
-        if(!userDoc.data().avatar){
-            return res.status(400).json({ error: "No profile picture to remove ", success: false});
-        }
-
-        const publicId = userDoc.data().avatar.split('/').pop().split('.')[0];
-        await cloudinary.uploader.destroy(publicId);
-
-        await db.collection('users').doc(user.uid).update({ avatar: null });
-
-        res.status(200).json({ message: "profile picture successfully removed", success: true });
-    } catch (error) {
-        console.log("Error removing profile picture", error)
-        res.status(500).json({ error: "Error when obtaining profile details.", success: false });
-    }
-
 };
 
 // Edit user's name
@@ -218,37 +110,6 @@ export const toggleDriverShouldCall = async (req, res) => {
 };
 
 // driver controllers 
-
-// Edit driver profile
-export const editDriverProfile = async (req, res) => {
-
-    const user = req.user;
-
-    if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
-    }
-
-    const { firstName, lastName, dob, email, phoneNumber, nrcNumber, address, vehicleInfo } = req.body;
-    const driverRef = db.collection('drivers').doc(user.uid);
-
-    try {
-        await driverRef.update({
-            firstName,
-            lastName,
-            dob,
-            email,
-            phoneNumber,
-            nrcNumber,
-            address,
-        });
-        const updatedDriver = await driverRef.get();
-
-        res.status(200).json(updatedDriver.data());
-    } catch (error) {
-        res.status(500).json({ error: "Error when obtaining profile details." });
-    }
-
-};
 
 export const verifyDriverProfile = async (req, res) => {
 
