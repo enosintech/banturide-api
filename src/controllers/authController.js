@@ -32,6 +32,7 @@ export const registerDriverController = async (req, res) => {
     try {
 
         const userDoc = await db.collection("drivers").doc(user.uid).get();
+
         if (userDoc.exists) {
             return res.status(400).json({ message: "User already exists. Sign in instead", success: false });
         }
@@ -66,71 +67,55 @@ export const registerDriverController = async (req, res) => {
 }
 
 export const registerPassengerController = async (req, res) => {
-    const { email, password, firstname, lastname, gender } = req.body;
 
-    if (!email || !password || !firstname || !lastname) {
+    const user = req.user;
+
+    if(!user) {
+        return res.status(401).json({
+            success: false,
+            message: "Unauthorized"
+        })
+    }
+
+    const { phoneNumber, firstname, lastname, gender } = req.body;
+
+    if (!phoneNumber || !firstname || !lastname || !gender ) {
         return res.status(422).json({
             message: "Missing required fields",
             fields: {
-                email: !email ? "Email is required" : undefined,
-                password: !password ? "Password is required" : undefined,
                 firstname: !firstname ? "First name is required" : undefined,
                 lastname: !lastname ? "Last name is required" : undefined,
+                phoneNumber: !phoneNumber ? "Phone number is required" : undefined,
+                gender: !gender ? "Gender is required" : undefined
             },
             success: false
         });
     }
 
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        try {
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            if (userDoc.exists) {
-                await deleteUser(user); 
-                return res.status(400).json({ message: "User already exists", success: false });
-            }
-
-            await db.collection('users').doc(user.uid).set({
-                userId: user.uid,
-                firstname,
-                lastname,
-                email,
-                gender: gender || "Unspecified",
-                driverShouldCall: false,
-                notificationsEnabled: true,
-                avatar: null,
-                role: 'user',
-                createdAt: new Date().toISOString()
-            });
-
-            await sendEmailVerification(user);
-
-            return res.status(201).json({ 
-                message: "User created successfully. Please verify your email.", 
-                success: true,
-                userCredential
-            });
-
-        } catch (firestoreError) {
-            await deleteUser(user);
-            console.log("Error saving user information to Database : ", firestoreError)
-            return res.status(500).json({ 
-                message: "An error occurred while registering user", 
-                success: false
-            });
+        
+        const userDoc = await db.collection("passengers").doc(user.uid).get();
+        
+        if (userDoc.exists) {
+            return res.status(400).json({ message: "User already exists. Sign in instead", success: false });
         }
+
+        await db.collection('passengers').doc(user.uid).set({
+            userId: user.uid,
+            firstname,
+            lastname,
+            phoneNumber,
+            gender: gender || "Unspecified",
+            driverShouldCall: false,
+            notificationsEnabled: true,
+            avatar: null,
+            role: 'user',
+            createdAt: new Date().toISOString()
+        });
+
+        return res.status(201).json({ message: "User registered successfully.", success: true, })
 
     } catch (error) {
-        if (error.code === 'auth/email-already-in-use') {
-            return res.status(400).json({ message: "Email is already in use", success: false });
-        } else if (error.code === 'auth/invalid-email') {
-            return res.status(400).json({ message: "Invalid email address", success: false });
-        } else if (error.code === 'auth/weak-password') {
-            return res.status(400).json({ message: "Password is too weak", success: false });
-        } else {
-            return res.status(500).json({ message: "An error occurred while registering user", success: false });
-        }
+        return res.status(500).json({ message: "An error occured during sign up", success: false })
     }
 };
