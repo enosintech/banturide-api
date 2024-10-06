@@ -2,7 +2,7 @@ import { FieldValue } from "firebase-admin/firestore";
 
 import { db } from "../config/firebase.js";
 
-import { sendDataToClient } from "../../server";
+import { sendDataToClient } from "../../server.js";
 
 export const approveDriverApplication = async (req, res) => {
 
