@@ -11,9 +11,12 @@ export const getUserProfile = async (req, res) => {
     if (!user) {
         return res.status(403).json({ error: "Unauthorized", success: false });
     }
+    
+    const passengerRef = db.collection("passengers").doc(user.uid);
 
     try {
-        const userDoc = await db.collection('passengers').doc(user.uid).get();
+        const userDoc = await passengerRef.get();
+
         if (!userDoc.exists) {
             return res.status(404).json({ error: "User not found", success: false });
         }
@@ -23,7 +26,8 @@ export const getUserProfile = async (req, res) => {
             ...userDoc.data(),
         }
 
-        res.status(200).json({ userData, success: true });
+        res.status(200).json(userData);
+
     } catch (error) {
         console.error("Error when obtaining user profile details", error)
         res.status(500).json({ error: "Error when obtaining profile details.", success: false });
@@ -276,7 +280,7 @@ export const getDriverInfo = async (req, res) => {
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
     const driverRef = db.collection('drivers').doc(user.uid);
@@ -296,7 +300,7 @@ export const getDriverInfo = async (req, res) => {
         res.status(200).json(driverData);
         
     } catch (error) {
-        res.status(500).json({ error: "Error when obtaining profile details." });
+        res.status(500).json({ error: "Error when obtaining profile details.", success: false });
     }
 
 };
