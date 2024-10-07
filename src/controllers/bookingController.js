@@ -147,7 +147,7 @@ export const searchDriversForBooking = async (req, res) => {
                 const currentDriverDoc = await db.collection('drivers').doc(driverId).get();
                 if (currentDriverDoc.exists && currentDriverDoc.data().driverStatus === 'reserved' && clientReservations.get(driverId) === clientId) {
                     await db.collection('drivers').doc(driverId).update({
-                        driverStatus: 'available',
+                        driverStatus: 'online',
                         reservedBy: null,
                         reservedUntil: null
                     });
@@ -161,8 +161,9 @@ export const searchDriversForBooking = async (req, res) => {
 
         const searchDrivers = async () => {
             const availableDriversSnapshot = await db.collection('drivers')
-                .where('driverStatus', '==', 'available')
+                .where('driverStatus', '==', 'online')
                 .where("bookingClass", "==", booking?.bookingClass)
+                .where("seats", '==',  booking?.seats)
                 .get();   
 
             availableDriversSnapshot.forEach(async doc => {
@@ -215,8 +216,9 @@ export const searchDriversForBooking = async (req, res) => {
         await searchDrivers();
 
         driverStatusUnsubscribe = db.collection('drivers')
-            .where('driverStatus', '==', 'available')
+            .where('driverStatus', '==', 'online')
             .where("bookingClass", "==", booking?.bookingClass)
+            .where("seats", '==',  booking?.seats)
             .onSnapshot(snapshot => {
                 snapshot.docChanges().forEach(async (change) => {
                     if (change.type === "added" || change.type === "modified") {
@@ -391,7 +393,7 @@ export const assignDriverToBooking = async (req, res) => {
         });
 
         await driverRef.update({
-            driverStatus: 'unavailable',
+            driverStatus: 'reserved',
             reservedUntil: null
         });
 
