@@ -403,7 +403,7 @@ export const assignDriverToBooking = async (req, res) => {
         const updatedDriverSnapshot = await driverRef.get();
         const updatedDriver = updatedDriverSnapshot.data();
 
-        const userRef = db.collection('users').doc(updatedBooking.userId);
+        const userRef = db.collection('drivers').doc(updatedBooking.userId);
         const userSnapshot = await userRef.get();
         const user = userSnapshot.data();
 
