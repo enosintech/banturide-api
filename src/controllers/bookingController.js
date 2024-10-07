@@ -1,8 +1,29 @@
 import { FieldValue } from "firebase-admin/firestore";
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 import { db } from "../config/firebase.js";
 
 import { sendDataToClient } from "../../server.js";
+
+const googleApiKey = process.env.GOOGLE_API_KEY;
+
+const reverseGeocode = async (lat, lng) => {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}`;
+    try {
+        const response = await axios.get(url);
+        if (response.data.status === 'OK') {
+            return response.data.results[0].formatted_address;
+        } else {
+            throw new Error(`Geocoding error: ${response.data.status}`);
+        }
+    } catch (error) {
+        console.error(error);
+        throw new Error('Failed to fetch geocoded address');
+    }
+};
 
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
@@ -385,11 +406,24 @@ export const assignDriverToBooking = async (req, res) => {
             });
         }
 
+        const bookingData = bookingSnapshot.data();
+
+        let thirdStopAddressName;
+
+        const pickUpAddressName = await reverseGeocode(bookingData.pickUpLocation.latitude, bookingData.pickUpLocation.longitude);
+        const dropOffAddressName = await reverseGeocode(bookingData.dropOffLocation.latitude, bookingData.dropOffLocation.longitude);
+        if(bookingData.hasThirdStop) {
+            thirdStopAddressName = await reverseGeocode(bookingData.thirdStopLocation.latitude, bookingData.thirdStopLocation.longitude);
+        }
+
         await bookingRef.update({
             bookingId: bookingRef.id,
             driverId: driverId,
             status: 'confirmed',
-            driverCurrentLocation: driver.location.coordinates
+            driverCurrentLocation: driver.location.coordinates,
+            pickupAddressName: pickUpAddressName,
+            dropOffAddressName: dropOffAddressName,
+            thirdStopAddressName: thirdStopAddressName ? thirdStopAddressName : ""
         });
 
         await driverRef.update({
