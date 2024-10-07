@@ -5,7 +5,6 @@ import {
     editUserName,
     toggleNotifications,
     toggleDriverShouldCall,
-    toggleDriverAvailability,
     getDriverInfo,
     getTotalEarnings,
     updateDriverStatus,
