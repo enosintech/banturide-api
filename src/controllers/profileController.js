@@ -245,32 +245,27 @@ export const checkDriverApplication = async (req, res) => {
     }
 };
 
-export const toggleDriverAvailability = async (req, res) => {
+export const updateDriverStatus = async (req, res) => {
 
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
-    const driverRef = db.collection('drivers').doc(user.uid);
+    const { status } = req.body;
 
     try {
-        const doc = await driverRef.get();
-        if (!doc.exists) {
-            return res.status(404).json({ error: "Driver not found" });
-        }
-
-        const currentStatus = doc.data().driverStatus;
-
+        const driverRef = db.collection('drivers').doc(user.uid);
         await driverRef.update({
-            driverStatus: currentStatus === 'available' ? 'unavailable' : 'available'
+            driverStatus: status
         });
 
-        const updatedDoc = await driverRef.get();
-        res.status(200).json({ message: "Current Status Updated", currentStatus: updatedDoc.data().driverStatus});
+        res.status(200).json({ message: "Driver status updated successfully", success: true });
+
     } catch (error) {
-        res.status(500).json({ error: "Error when obtaining profile details." });
+        console.error("Error updating driver status:", error);
+        res.status(500).json({ error: "Error updating driver status.", success: false });
     }
 
 };
@@ -289,7 +284,7 @@ export const getDriverInfo = async (req, res) => {
         const doc = await driverRef.get();
 
         if (!doc.exists) {
-            return res.status(404).json({ error: "Driver not found" });
+            return res.status(404).json({ error: "Driver not found", success: false });
         }
 
         const driverData = {
@@ -332,32 +327,6 @@ export const getTotalEarnings = async (req, res) => {
 
 };
 
-// Update Driver Status (e.g., set status to 'online' or 'offline')
-export const updateDriverStatus = async (req, res) => {
-
-    const user = req.user;
-
-    if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
-    }
-
-    const { status } = req.body;
-
-    try {
-        const driverRef = db.collection('drivers').doc(user.uid);
-        await driverRef.update({
-            status: status
-        });
-
-        res.status(200).json({ message: "Driver status updated successfully" });
-    } catch (error) {
-        console.error("Error updating driver status:", error);
-        res.status(500).json({ error: "Error when obtaining profile details." });
-    }
-
-};
-
-// Get Driver Statistics
 export const getDriverStatistics = async (req, res) => {
 
     const user = req.user;
