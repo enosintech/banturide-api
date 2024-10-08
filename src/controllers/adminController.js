@@ -4,6 +4,70 @@ import { db } from "../config/firebase.js";
 
 import { sendDataToClient } from "../../server.js";
 
+
+export const getAllDriverApplications = async (req, res) => {
+    try {
+        const applicationsSnapshot = await db.collection('driver-applications').get();
+        
+        if (applicationsSnapshot.empty) {
+            return res.status(404).json({
+                success: false,
+                message: "No driver applications found"
+            });
+        }
+
+        const applications = applicationsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        return res.status(200).json({
+            success: true,
+            applications
+        });
+
+    } catch (error) {
+        console.error("Error fetching driver applications:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+
+export const getAllComplaints = async (req, res) => {
+    try {
+        const complaintsSnapshot = await db.collection('complaints').get();
+        
+        if (complaintsSnapshot.empty) {
+            return res.status(404).json({
+                success: false,
+                message: "No complaints found"
+            });
+        }
+
+        const complaints = complaintsSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        return res.status(200).json({
+            success: true,
+            complaints
+        });
+
+    } catch (error) {
+        console.error("Error fetching complaints:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+
+
 export const approveDriverApplication = async (req, res) => {
     const { applicationId, driverId, bookingClass, deliveryClass } = req.body;
 
