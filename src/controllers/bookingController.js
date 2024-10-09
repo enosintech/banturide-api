@@ -796,6 +796,7 @@ export const driverAtPickupLocation = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Driver Arrived at pick location successfully set to true",
+            booking: updatedBooking,
         });
     } catch (error) {
         console.error("Error in notifying driver arrival at pickup location:", error);
@@ -851,6 +852,7 @@ export const startRide = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Ride has started.",
+            booking: updatedBooking
         });
 
     } catch (error) {
@@ -906,6 +908,7 @@ export const arrivedFirstStop = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "First stop set to arrived successfully.",
+            booking: updatedBooking
         });
 
 
@@ -962,7 +965,8 @@ export const endRide = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Ride has ended."
+            message: "Ride has ended.",
+            booking: updatedBooking
         });
 
     } catch (error) {
