@@ -1,9 +1,9 @@
 import { FieldValue } from "firebase-admin/firestore";
 
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 
 import { db } from "../config/firebase.js";
-import jwt from "jsonwebtoken";
 import { sendDataToClient } from "../../server.js";
 
 
