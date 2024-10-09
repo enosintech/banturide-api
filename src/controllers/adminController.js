@@ -1,8 +1,107 @@
 import { FieldValue } from "firebase-admin/firestore";
 
-import { db } from "../config/firebase.js";
+import bcrypt from "bcrypt";
 
+import { db } from "../config/firebase.js";
+import jwt from "jsonwebtoken";
 import { sendDataToClient } from "../../server.js";
+
+
+// Admin login
+export const loginAdmin = async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({
+            success: false,
+            message: "Email and password are required"
+        });
+    }
+
+    try {
+        // Check if the admin exists
+        const adminSnapshot = await db.collection('admins').where('email', '==', email).get();
+        if (adminSnapshot.empty) {
+            return res.status(404).json({
+                success: false,
+                message: "Admin not found"
+            });
+        }
+
+        const adminDoc = adminSnapshot.docs[0];
+        const admin = adminDoc.data();
+
+        // Compare passwords
+        const isPasswordValid = await bcrypt.compare(password, admin.password);
+        if (!isPasswordValid) {
+            return res.status(401).json({
+                success: false,
+                message: "Invalid password"
+            });
+        }
+
+        // Generate a JWT token
+        const token = jwt.sign({ id: adminDoc.id, email: admin.email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            token
+        });
+
+    } catch (error) {
+        console.error("Error during admin login:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+// Create an admin user
+export const createAdmin = async (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({
+            success: false,
+            message: "Email and password are required"
+        });
+    }
+
+    try {
+        // Check if admin already exists
+        const adminSnapshot = await db.collection('admins').where('email', '==', email).get();
+        if (!adminSnapshot.empty) {
+            return res.status(400).json({
+                success: false,
+                message: "Admin with this email already exists"
+            });
+        }
+
+        // Hash the password
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Store admin in Firestore
+        await db.collection('admins').add({
+            email,
+            password: hashedPassword,
+            createdAt: FieldValue.serverTimestamp()
+        });
+
+        return res.status(201).json({
+            success: true,
+            message: "Admin created successfully"
+        });
+
+    } catch (error) {
+        console.error("Error creating admin:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
 
 
 export const getAllDriverApplications = async (req, res) => {
