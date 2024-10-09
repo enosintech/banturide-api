@@ -119,14 +119,14 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
     }
 
     const booking = bookingDoc.data();
-    const driverDistanceFromDropoff = calculateDistance(booking.driverCurrentLocation, booking.dropOffLocation);
+    // const driverDistanceFromDropoff = calculateDistance(booking.driverCurrentLocation, booking.dropOffLocation);
 
-    if (driverDistanceFromDropoff > 1) {
-      return res.status(400).json({
-          success: false,
-          message: `Driver is ${driverDistanceFromDropoff.toFixed(2)} km away and is not close enough to the dropoff location to confirm payment.`,
-      });
-    }
+    // if (driverDistanceFromDropoff > 1) {
+    //   return res.status(400).json({
+    //       success: false,
+    //       message: `Driver is ${driverDistanceFromDropoff.toFixed(2)} km away and is not close enough to the dropoff location to confirm payment.`,
+    //   });
+    // }
 
     const newPayment = {
       bookingId,
