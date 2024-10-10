@@ -304,6 +304,34 @@ export const getDriverInfo = async (req, res) => {
 
 };
 
+export const getTotalTrips = async (req, res) => {
+
+    const user = req.user;
+
+    if(!user) {
+        return res.status(404).json({ error: "Unauthorized", success: false })
+    }
+
+    try { 
+
+        const bookingsSnapshot = await db.collection("bookings").where("driverId", "==" , user.uid).get();
+
+        let totalTrips = 0;
+
+        if (!bookingsSnapshot.empty) {
+            bookingsSnapshot.forEach(doc => {
+                totalTrips += 1; 
+            });
+        }
+
+        return res.status(200).json({ totalTrips });
+
+    } catch (error ) {
+        console.error("Error getting driver bookings", error);
+        return res.status(500).json({ error: "Error when obtaining total trips", success: false})
+    }
+}
+
 export const getTotalEarnings = async (req, res) => {
 
     const user = req.user;
