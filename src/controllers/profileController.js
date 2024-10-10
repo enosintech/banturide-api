@@ -285,6 +285,8 @@ export const getDriverInfo = async (req, res) => {
     try {
         const doc = await driverRef.get();
 
+        console.log(doc)
+
         if (!doc.exists) {
             console.log(doc)
             return res.status(404).json({ error: "Driver not found", success: false });
