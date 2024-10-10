@@ -4,6 +4,15 @@ const auth = getAuth();
 
 export const registerDriverController = async (req, res) => {
 
+    const user = req.user;
+
+    if(!user) {
+        return res.status(401).json({
+            success: false,
+            message: "Unauthorized"
+        })
+    }
+
     const { phoneNumber, firstname, lastname, gender, dob } = req.body;
 
     if(!phoneNumber || !firstname || !lastname || !gender || !dob ) {
@@ -53,11 +62,21 @@ export const registerDriverController = async (req, res) => {
         return res.status(201).json({ message: "Driver registered successfully.", success: true, })
 
     } catch (error) {
+        console.error(error)
         return res.status(500).json({ message: "An error occured during sign up", success: false })
     }
 }
 
 export const registerPassengerController = async (req, res) => {
+
+    const user = req.user;
+
+    if(!user) {
+        return res.status(401).json({
+            success: false,
+            message: "Unauthorized"
+        })
+    }
 
     const { phoneNumber, firstname, lastname, gender } = req.body;
 
@@ -98,6 +117,7 @@ export const registerPassengerController = async (req, res) => {
         return res.status(201).json({ message: "User registered successfully.", success: true, })
 
     } catch (error) {
+        console.error(error)
         return res.status(500).json({ message: "An error occured during sign up", success: false })
     }
 };
