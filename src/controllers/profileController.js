@@ -312,7 +312,6 @@ export const getTotalTrips = async (req, res) => {
     }
 
     try {
-        console.log(`Querying bookings for driverId: ${user.uid}`);
         const bookingsSnapshot = await db.collection("bookings").where("driverId", "==", user.uid).get();
 
         const totalTrips = bookingsSnapshot.size; 

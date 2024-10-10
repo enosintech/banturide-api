@@ -29,7 +29,7 @@ router.get('/get-driver-info', getDriverInfo);
 router.post('/verify-driver-profile', verifyDriverProfile);
 router.get("/check-application-status", checkDriverApplication);
 router.post("/update-driver-status", updateDriverStatus);
-router.post("/get-total-trips", getTotalTrips);
+router.get("/get-total-trips", getTotalTrips);
 router.get('/get-driver-total-earnings', getTotalEarnings);
 router.get('/get-driver-statistics', getDriverStatistics);
 
