@@ -12,6 +12,12 @@ export const verifyUser = async (req, res, next) => {
 
     try {
         const decodedToken = await admin.auth().verifyIdToken(idToken);
+        const uid = decodedToken.uid;
+
+        const userRecord = await admin.auth().getUser(uid);
+        if (!userRecord) {
+            return res.status(403).json({ success: false, message: "Unauthorized", info: "User not found"});
+        }
 
         req.user = decodedToken;
         return next();

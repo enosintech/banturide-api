@@ -1,17 +1,8 @@
-import { db, getAuth, createUserWithEmailAndPassword, sendEmailVerification,  deleteUser, } from "../config/firebase.js";
+import { db, getAuth } from "../config/firebase.js";
 
 const auth = getAuth();
 
 export const registerDriverController = async (req, res) => {
-
-    const user = req.user;
-
-    if(!user) {
-        return res.status(401).json({
-            success: false,
-            message: "Unauthorized"
-        })
-    }
 
     const { phoneNumber, firstname, lastname, gender, dob } = req.body;
 
@@ -67,15 +58,6 @@ export const registerDriverController = async (req, res) => {
 }
 
 export const registerPassengerController = async (req, res) => {
-
-    const user = req.user;
-
-    if(!user) {
-        return res.status(401).json({
-            success: false,
-            message: "Unauthorized"
-        })
-    }
 
     const { phoneNumber, firstname, lastname, gender } = req.body;
 
