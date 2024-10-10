@@ -278,6 +278,8 @@ export const getDriverInfo = async (req, res) => {
         return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
+    console.log(user)
+
     const driverRef = db.collection('drivers').doc(user.uid);
 
     try {
