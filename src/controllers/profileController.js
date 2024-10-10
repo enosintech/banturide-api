@@ -131,7 +131,8 @@ export const verifyDriverProfile = async (req, res) => {
         seats,
         vehicleImage1,
         vehicleImage2,
-        insuranceCertificateImage
+        insuranceCertificateImage,
+        driversLicenseImage
     } = req.body;
 
     const user = req.user;
@@ -140,7 +141,7 @@ export const verifyDriverProfile = async (req, res) => {
         return res.status(403).json({ error: "Unauthorized", success: false})
     }
 
-    if (!avatar || !nrc || !licenseNumber || !licenseExpiry || !vehicleReg || !carMake || !carModel || !carColor || !seats || !vehicleImage1 || !vehicleImage2 || !insuranceCertificateImage ) {
+    if (!avatar || !nrc || !licenseNumber || !licenseExpiry || !vehicleReg || !carMake || !carModel || !carColor || !seats || !vehicleImage1 || !vehicleImage2 || !insuranceCertificateImage || !driversLicenseImage ) {
         return res.status(400).json({ error: "Missing required fields", success: false });
     }
     
@@ -162,6 +163,7 @@ export const verifyDriverProfile = async (req, res) => {
         insuranceCertificateImage,
         canDriver,
         canDeliver,
+        driversLicenseImage,
         driverVerificationStatus: "pending",
         createdAt: FieldValue.serverTimestamp()
     }
@@ -174,17 +176,11 @@ export const verifyDriverProfile = async (req, res) => {
 
         await driverRef.update({
             avatar,
-            nrc,
-            licenseNumber,
-            licenseExpiry,
             vehicleReg,
             carMake,
             carModel,
             carColor,
             seats,
-            vehicleImage1,
-            vehicleImage2,
-            insuranceCertificateImage,
             canDriver,
             canDeliver,
             driverVerificationStatus: "pending",
@@ -230,13 +226,13 @@ export const checkDriverApplication = async (req, res) => {
         const { driverVerificationStatus } = applicationData;
 
         if (driverVerificationStatus === "approved") {
-            return res.status(200).json({ success: true, message: "Driver verified successfully." });
+            return res.status(200).json({ success: true, message: "Driver verified successfully" });
         } else if (driverVerificationStatus === "failed") {
-            return res.status(200).json({ success: true, message: "Driver application failed."  });
+            return res.status(200).json({ success: true, message: "Driver application failed"  });
         } else if (driverVerificationStatus === "pending") {
-            return res.status(200).json({ success: true, message: "Application is still pending." });
+            return res.status(200).json({ success: true, message: "Application is still pending" });
         } else {
-            return res.status(400).json({ success: false, message: "Invalid verification status." });
+            return res.status(400).json({ success: false, message: "Invalid verification status" });
         }
 
     } catch (error) {
@@ -383,7 +379,6 @@ export const getDriverStatistics = async (req, res) => {
 
 };
 
-// Helper function for getting total earnings (used internally)
 const getTotalEarningsInternal = async (req, res) => {
 
     const user = req.user;
