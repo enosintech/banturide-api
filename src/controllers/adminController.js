@@ -197,9 +197,9 @@ export const approveDriverApplication = async (req, res) => {
                 throw new Error("Driver not found");
             }
 
-            // Prepare update data for driver
             const driverUpdateData = {
-                driverVerificationStatus: 'approved'
+                driverVerificationStatus: 'approved',
+                reason: ""
             };
 
             if (bookingClass) {
@@ -209,7 +209,6 @@ export const approveDriverApplication = async (req, res) => {
                 driverUpdateData.deliveryClass = deliveryClass;
             }
 
-            // After all reads are complete, perform the writes
             transaction.update(applicationRef, {
                 driverVerificationStatus: 'approved'
             });
@@ -244,7 +243,6 @@ export const denyDriverApplication = async (req, res) => {
 
     try {
         await db.runTransaction(async (transaction) => {
-            // Perform all reads first
             const applicationRef = db.collection('driver-applications').doc(applicationId);
             const driverRef = db.collection('drivers').doc(driverId);
 

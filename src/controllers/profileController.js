@@ -320,39 +320,11 @@ export const getTotalTrips = async (req, res) => {
     }
 };
 
-export const getTotalEarnings = async (req, res) => {
-
-    const user = req.user;
-
-    if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
-    }
-
-    try {
-        const bookingsSnapshot = await db.collection('bookings').where('driverId', '==', user.uid).get();
-        let totalEarnings = 0;
-
-        bookingsSnapshot.forEach(doc => {
-            const booking = doc.data();
-            if (booking.paymentStatus === 'completed') {
-                totalEarnings += booking.price;
-            }
-        });
-
-        res.status(200).json({ totalEarnings });
-    } catch (error) {
-        console.error("Error getting total earnings:", error);
-        res.status(500).json({ error: "Error when obtaining profile details." });
-    }
-
-};
-
 export const getDriverStatistics = async (req, res) => {
-
     const user = req.user;
 
     if (!user) {
-        return res.status(403).json({ error: "Unauthorized" });
+        return res.status(403).json({ success: false, error: "Unauthorized" });
     }
 
     try {
@@ -360,48 +332,48 @@ export const getDriverStatistics = async (req, res) => {
         const driverDoc = await driverRef.get();
 
         if (!driverDoc.exists) {
-            return res.status(404).json({ error: "Driver not found" });
+            return res.status(404).json({ success: false, error: "Driver not found" });
         }
 
-        const totalEarnings = await getTotalEarningsInternal({ currentUser: user }, res);
-        const completedRides = await db.collection('bookings').where('driverId', '==', user.uid).where('status', '==', 'completed').get();
+        const completedRidesSnapshot = await db.collection('bookings')
+            .where('driverId', '==', user.uid)
+            .where('status', '==', 'completed')
+            .get();
 
-        const statistics = {
-            totalEarnings: totalEarnings.totalEarnings,
-            completedRides: completedRides.size,
-        };
+        if (completedRidesSnapshot.empty) {
+            return res.status(200).json({ success: true, data: [] });
+        }
 
-        res.status(200).json(statistics);
-    } catch (error) {
-        console.error("Error getting driver statistics:", error);
-        res.status(500).json({ error: "Error when obtaining profile details." });
-    }
+        const earningsByDate = {};
 
-};
-
-const getTotalEarningsInternal = async (req, res) => {
-
-    const user = req.user;
-
-    try {
-        const bookingsSnapshot = await db.collection('bookings').where('driverId', '==', user.uid).get();
-        let totalEarnings = 0;
-
-        bookingsSnapshot.forEach(doc => {
+        completedRidesSnapshot.forEach(doc => {
             const booking = doc.data();
-            if (booking.paymentStatus === 'completed') {
-                totalEarnings += booking.price;
+            const createdAt = booking.createdAt.toDate(); 
+            const dateKey = createdAt.toISOString().split('T')[0]; 
+
+            const price = parseFloat(booking.price);
+
+            if (!earningsByDate[dateKey]) {
+                earningsByDate[dateKey] = { value: 0, trips: 0 };
             }
+
+            earningsByDate[dateKey].value += price;
+            earningsByDate[dateKey].trips += 1;
         });
 
-        return { totalEarnings };
+        const sampleEarningsData = Object.keys(earningsByDate).map(date => ({
+            date,
+            value: parseFloat(earningsByDate[date].value.toFixed(2)), 
+            trips: earningsByDate[date].trips,
+        }));
 
+        res.status(200).json({ success: true, data: sampleEarningsData }); 
     } catch (error) {
-        console.error("Error getting total earnings:", error);
-        throw new Error("Error when obtaining profile details.");
+        console.error("Error getting driver statistics:", error);
+        res.status(500).json({ success: false, error: "Error when obtaining profile details." });
     }
-
 };
+
 
 
 

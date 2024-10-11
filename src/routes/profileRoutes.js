@@ -6,7 +6,6 @@ import {
     toggleNotifications,
     toggleDriverShouldCall,
     getDriverInfo,
-    getTotalEarnings,
     updateDriverStatus,
     getDriverStatistics,
     verifyDriverProfile,
@@ -30,7 +29,6 @@ router.post('/verify-driver-profile', verifyDriverProfile);
 router.get("/check-application-status", checkDriverApplication);
 router.post("/update-driver-status", updateDriverStatus);
 router.get("/get-total-trips", getTotalTrips);
-router.get('/get-driver-total-earnings', getTotalEarnings);
 router.get('/get-driver-statistics', getDriverStatistics);
 
 export default router;
