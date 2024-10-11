@@ -147,7 +147,7 @@ export const confirmPaymentAndMarkRideAsSuccessful = async (req, res) => {
     });
 
     await driverRef.update(({
-      driverStatus: "available",
+      driverStatus: "online",
       reservedBy: null,
     }))
 
