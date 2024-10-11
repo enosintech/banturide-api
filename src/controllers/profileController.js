@@ -184,6 +184,7 @@ export const verifyDriverProfile = async (req, res) => {
             canDriver,
             canDeliver,
             driverVerificationStatus: "pending",
+            driverStatus: "offline",
             createdAt: FieldValue.serverTimestamp()
         })
 
