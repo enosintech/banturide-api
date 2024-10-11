@@ -86,6 +86,17 @@ export const deliveryRequest = async (req, res ) => {
 };
 
 export const searchAndAssignDriverToDelivery = async (req, res) => {
+
+
+    const user = req.user;
+
+    if(!user) {
+        return res.status(400).json({
+            success: false,
+            message: "Unauthorized"
+        })
+    }
+
     const { deliveryId } = req.body;
 
     if (!deliveryId) {
@@ -129,6 +140,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                 const driverId = doc.id;
                 const driverRef = db.collection('drivers').doc(driverId);
                 const deliveryRef = db.collection('deliveries').doc(deliveryId);
+                const userRef = db.collection("drivers").doc(user.uid)
 
                 try {
                     await db.runTransaction(async (transaction) => {
@@ -139,7 +151,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                         }
 
                         transaction.update(driverRef, {
-                            driverStatus: "unavailable",
+                            driverStatus: "reserved",
                             reservedBy: delivery.userId,
                         });
 
@@ -160,8 +172,19 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                         driverCurrentLocation: updatedDriverData.location.coordinates
                     });
 
+                    const userDoc = await userRef.get();
+                    const userData = userDoc.data();
+
                     const updatedBookingDoc = await deliveryRef.get();
                     const updatedBookingData = updatedBookingDoc.data();
+
+                    sendDataToClient(driverId, "notification", {
+                        type: 'driverAssigned',
+                        notificationId: `${driverId}-${Date.now()}`,
+                        message: "You have a new customer",
+                        booking: JSON.stringify(updatedBookingData),
+                        user: JSON.stringify(userData)
+                    })
 
                     if (!responseSent) {
                         responseSent = true;
