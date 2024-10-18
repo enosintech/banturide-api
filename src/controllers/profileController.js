@@ -92,8 +92,8 @@ export const editUserName = async (req, res) => {
     }
 
     try {
-        
-        await db.collection('users').doc(user.uid).update({ firstname, lastname });
+
+        await db.collection('passengers').doc(user.uid).update({ firstname, lastname });
 
         res.status(200).json({ message: "Username updated successfully", success: true });
 
@@ -120,7 +120,7 @@ export const toggleNotifications = async (req, res) => {
     }
 
     try {
-        await db.collection('users').doc(user.uid).update({ notificationsEnabled: value });
+        await db.collection('passengers').doc(user.uid).update({ notificationsEnabled: value });
 
         res.status(200).json({ message: "Notifications updated successfully", value, success: true });
     } catch (error) {
@@ -146,7 +146,7 @@ export const toggleDriverShouldCall = async (req, res) => {
     }
 
     try {
-        await db.collection('users').doc(user.uid).update({ driverShouldCall: value });
+        await db.collection('passengers').doc(user.uid).update({ driverShouldCall: value });
 
         res.status(200).json({ message: "Driver Should Call Updated Successfully", value, success: true });
     } catch (error) {
