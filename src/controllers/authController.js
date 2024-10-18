@@ -107,7 +107,7 @@ export const registerPassengerController = async (req, res) => {
             lastname,
             phoneNumber,
             gender: gender || "Unspecified",
-            driverShouldCall: false,
+            driverShouldCall: true,
             notificationsEnabled: true,
             avatar: null,
             role: 'user',
