@@ -34,6 +34,48 @@ export const getUserProfile = async (req, res) => {
     }
 };
 
+export const uploadProfilePicture = async (req, res) => {
+
+    const user = req.user;
+
+    if(!user) {
+        return res.status(403).json({ error: "Unauthorized", success: false})
+    }
+
+    const { imageUri } = req.body;
+
+    if(!imageUri) {
+        return res.status(400).json({ error: "No image URI provided", success: false})
+    }
+
+    try {
+        await db.collection("passengers").doc(user.uid).update({ avatar: imageUri});
+
+        res.status(200).json({ message: "Profile Image uploaded successfully", success: true })
+    } catch (error) {
+        console.error("Error uploading profile image", error)
+        res.status(500).json({ error: "Error uploading profile image", success: false})
+    }  
+}
+
+export const removeProfilePicture = async (req, res) => {
+    
+    const user = req.user;
+
+    if(!user) {
+        return res.status(403).json({ error: "Unauthorized", success: false})
+    }
+
+    try {
+        await db.collection("passengers").doc(user.uid).update({ avatar: null});
+
+        res.status(200).json({ message: "Profile Image removed successfully", success: true })
+    } catch (error) {
+        console.error("Error removing profile image", error)
+        res.status(500).json({ error: "Error removing profile image", success: false})
+    }  
+}
+
 // Edit user's name
 export const editUserName = async (req, res) => {
 
@@ -50,6 +92,7 @@ export const editUserName = async (req, res) => {
     }
 
     try {
+        
         await db.collection('users').doc(user.uid).update({ firstname, lastname });
 
         res.status(200).json({ message: "Username updated successfully", success: true });

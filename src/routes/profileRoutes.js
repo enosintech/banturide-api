@@ -11,6 +11,8 @@ import {
     verifyDriverProfile,
     checkDriverApplication,
     getTotalTrips,
+    uploadProfilePicture,
+    removeProfilePicture,
 } from '../controllers/profileController.js';
 
 import { verifyUser } from '../middleware/index.js';
@@ -21,6 +23,8 @@ router.use(verifyUser);
 
 router.get('/get-user-profile', getUserProfile);
 router.post('/edit-username', editUserName);
+router.post("/upload-avatar", uploadProfilePicture);
+router.post("/remove-avatar", removeProfilePicture);
 router.post('/toggle-notifications', toggleNotifications);
 router.post('/toggle-driver-should-call', toggleDriverShouldCall);
 
