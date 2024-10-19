@@ -28,7 +28,7 @@ export const deliveryRequest = async (req, res ) => {
         })
     }
 
-    if(!pickUpLatitude || !pickUpLongitude || !pickUpAddressName || !dropOffLatitude || !dropOffLongitude || !dropOffAddressName || !recipientName || !recipientContact  || !price || !paymentMethod || !bookingClass || !hasThirdStop) {
+    if(!pickUpLatitude || !pickUpLongitude || !pickUpAddressName || !dropOffLatitude || !dropOffLongitude || !dropOffAddressName || !recipientName || !recipientContact  || !price || !paymentMethod || !bookingClass ) {
         return res.status(400).json({
             success: false,
             message: "Missing Required fields.",

@@ -50,7 +50,7 @@ export const passengerBookingRequest = async (req, res) => {
         })
     }
 
-    if ( !pickUpLatitude || !pickUpLongitude || !pickUpAddressName || !dropOffLatitude || !dropOffLongitude || !dropOffAddressName || !price || !seats || !bookingClass || !paymentMethod || !hasThirdStop) {
+    if ( !pickUpLatitude || !pickUpLongitude || !pickUpAddressName || !dropOffLatitude || !dropOffLongitude || !dropOffAddressName || !price || !seats || !bookingClass || !paymentMethod) {
         return res.status(400).json({
             success: false,
             message: "Missing Required fields.",
