@@ -39,7 +39,7 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
 }
 
 export const passengerBookingRequest = async (req, res) => {
-    const { pickUpLatitude, pickUpLongitude, dropOffLatitude, dropOffLongitude, price, hasThirdStop, thirdStopLatitude, thirdStopLongitude, seats, bookingClass, paymentMethod } = req.body;
+    const { pickUpLatitude, pickUpLongitude, pickUpAddressName, dropOffLatitude, dropOffLongitude, dropOffAddressName, price, hasThirdStop, thirdStopLatitude, thirdStopLongitude, thirdStopAddressName, seats, bookingClass, paymentMethod } = req.body;
 
     const user = req.user;
 
@@ -50,17 +50,17 @@ export const passengerBookingRequest = async (req, res) => {
         })
     }
 
-    if ( !pickUpLatitude || !pickUpLongitude || !dropOffLatitude || !dropOffLongitude) {
+    if ( !pickUpLatitude || !pickUpLongitude || !pickUpAddressName || !dropOffLatitude || !dropOffLongitude || !dropOffAddressName || !price || !seats || !bookingClass || !paymentMethod || !hasThirdStop) {
         return res.status(400).json({
             success: false,
-            message: "pick-up, and drop-off locations are required.",
+            message: "Missing Required fields.",
         });
     }
 
     const newBooking = {
         userId: user.uid,
-        pickUpLocation: { latitude: pickUpLatitude, longitude: pickUpLongitude },
-        dropOffLocation: { latitude: dropOffLatitude, longitude: dropOffLongitude },
+        pickUpLocation: { latitude: pickUpLatitude, longitude: pickUpLongitude, description: pickUpAddressName },
+        dropOffLocation: { latitude: dropOffLatitude, longitude: dropOffLongitude, description: dropOffAddressName },
         price,
         seats,
         bookingClass,
@@ -69,11 +69,18 @@ export const passengerBookingRequest = async (req, res) => {
         bookingType: "ride",
         status: 'pending',
         paymentReceived: false,
+        driverId: null,
+        driverCurrentLocation: null,
+        driverArrivedAtPickup: false,
+        driverArrivedAtDropoff: false,
+        cancelReason: null,
+        rated: false,
+        reachedThirdStop: false,
         createdAt: FieldValue.serverTimestamp()
     };
 
     if (hasThirdStop && thirdStopLatitude && thirdStopLongitude) {
-        newBooking.thirdStopLocation = { latitude: thirdStopLatitude, longitude: thirdStopLongitude };
+        newBooking.thirdStopLocation = { latitude: thirdStopLatitude, longitude: thirdStopLongitude, description: thirdStopAddressName };
         newBooking.reachedThirdStop = false;
     }
 
@@ -728,7 +735,7 @@ export const cancelBooking = async (req, res) => {
             });
 
             await bookingRef.update({
-                reason: reason || "No reason provided"
+                cancelReason: reason || "No reason provided"
             })
 
             sendDataToClient(booking.driverId, "notification", { notificationId: `${bookingId}-${Date.now()}`, type: 'bookingCancelled', message: "Customer has cancelled the booking", reason: reason || "No reason Provided" })
