@@ -447,7 +447,7 @@ export const assignDriverToBooking = async (req, res) => {
             const driverData = snapshot.data();
             const driverLocation = driverData.location;
 
-            if(driverData.driverStatus === "online"){
+            if(driverData.driverStatus !== "reserved"){
                 stopListeners();
                 sendDataToClient(updatedBooking.userId, "notification", { 
                     type: "driverReleased", 
@@ -464,7 +464,7 @@ export const assignDriverToBooking = async (req, res) => {
             const latestBookingSnapshot = await bookingRef.get();
             const latestBooking = latestBookingSnapshot.data();
 
-            if(driverData.driverStatus !== "online"){
+            if(driverData.driverStatus === "reserved"){
                 sendDataToClient(updatedBooking.userId, "notification", { 
                     type: "locationUpdated", 
                     message: "Your driver location has been updated", 
