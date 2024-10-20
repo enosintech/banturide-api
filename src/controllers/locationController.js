@@ -11,7 +11,7 @@ export const updateDriverLocation = async (req, res) => {
         return res.status(403).json({ error: "Unauthorized", success: false });
     }
 
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, description } = req.body;
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number' || 
         isNaN(latitude) || isNaN(longitude) || 
@@ -20,12 +20,17 @@ export const updateDriverLocation = async (req, res) => {
         return res.status(400).json({ error: "Invalid latitude or longitude values", success: false });
     }
 
+    if(!description) {
+        return res.status(403).json({ error: "Location Description Not provided", success: false})
+    }
+
     try {
         const driverRef = db.collection('drivers').doc(user.uid);
 
         await driverRef.update({
             location: {
                 type: "Point",
+                description: description,
                 coordinates: [latitude, longitude]
             },
             updatedAt: FieldValue.serverTimestamp()
