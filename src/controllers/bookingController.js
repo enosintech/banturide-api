@@ -8,23 +8,6 @@ import { db } from "../config/firebase.js";
 
 import { sendDataToClient } from "../../server.js";
 
-const googleApiKey = process.env.GOOGLE_API_KEY;
-
-const reverseGeocode = async (lat, lng) => {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}`;
-    try {
-        const response = await axios.get(url);
-        if (response.data.status === 'OK') {
-            return response.data.results[0].formatted_address;
-        } else {
-            throw new Error(`Geocoding error: ${response.data.status}`);
-        }
-    } catch (error) {
-        console.error(error);
-        throw new Error('Failed to fetch geocoded address');
-    }
-};
-
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -382,7 +365,7 @@ export const assignDriverToBooking = async (req, res) => {
         return res.status(400).json({
             success: false,
             message: "Booking id and driver id are required"
-        })
+        });
     }
 
     try {
@@ -415,24 +398,11 @@ export const assignDriverToBooking = async (req, res) => {
             });
         }
 
-        const bookingData = bookingSnapshot.data();
-
-        let thirdStopAddressName;
-
-        const pickUpAddressName = await reverseGeocode(bookingData.pickUpLocation.latitude, bookingData.pickUpLocation.longitude);
-        const dropOffAddressName = await reverseGeocode(bookingData.dropOffLocation.latitude, bookingData.dropOffLocation.longitude);
-        if(bookingData.hasThirdStop) {
-            thirdStopAddressName = await reverseGeocode(bookingData.thirdStopLocation.latitude, bookingData.thirdStopLocation.longitude);
-        }
-
         await bookingRef.update({
             bookingId: bookingRef.id,
             driverId: driverId,
             status: 'confirmed',
-            driverCurrentLocation: driver.location.coordinates,
-            pickupAddressName: pickUpAddressName,
-            dropOffAddressName: dropOffAddressName,
-            thirdStopAddressName: thirdStopAddressName ? thirdStopAddressName : ""
+            driverCurrentLocation: driver.location,
         });
 
         await driverRef.update({
@@ -446,7 +416,7 @@ export const assignDriverToBooking = async (req, res) => {
         const updatedDriverSnapshot = await driverRef.get();
         const updatedDriver = updatedDriverSnapshot.data();
 
-        const userRef = db.collection('drivers').doc(updatedBooking.userId);
+        const userRef = db.collection('passengers').doc(updatedBooking.userId);
         const userSnapshot = await userRef.get();
         const user = userSnapshot.data();
 
@@ -456,11 +426,71 @@ export const assignDriverToBooking = async (req, res) => {
             message: "You have a new customer",
             booking: JSON.stringify(updatedBooking),
             user: JSON.stringify(user)
-        })
+        });
+
+        let driverListener;
+        let bookingListener;
+
+        const stopListeners = () => {
+            if (driverListener) driverListener();
+            if (bookingListener) bookingListener();
+            console.log(`Listeners stopped for booking ${bookingId}`);
+        };
+
+        driverListener = driverRef.onSnapshot(async (snapshot) => {
+            if (!snapshot.exists) {
+                console.error(`Driver document ${driverId} does not exist`);
+                stopListeners();
+                return;
+            }
+
+            const driverData = snapshot.data();
+            const driverLocation = driverData.location;
+
+            if(driverData.driverStatus === "online"){
+                stopListeners();
+                sendDataToClient(updatedBooking.userId, "notification", { 
+                    type: "driverReleased", 
+                    message: "Driver released and listening for location has stopped" 
+                });
+                return;
+            }
+
+            await bookingRef.update({
+                driverCurrentLocation: driverLocation,
+                updatedAt: FieldValue.serverTimestamp()
+            });
+
+            const latestBookingSnapshot = await bookingRef.get();
+            const latestBooking = latestBookingSnapshot.data();
+
+            if(driverData.driverStatus !== "online"){
+                sendDataToClient(updatedBooking.userId, "notification", { 
+                    type: "locationUpdated", 
+                    message: "Your driver location has been updated", 
+                    booking: JSON.stringify(latestBooking)
+                });
+            }
+        });
+
+        bookingListener = bookingRef.onSnapshot(async (snapshot) => {
+            if(!snapshot.exists) {
+                console.error(`Booking document ${bookingId} does not exist`);
+                stopListeners();
+                return;
+            }
+
+            const bookingData = snapshot.data();
+
+            if(["completed", "arrived", "cancelled"].includes(bookingData?.status)) {
+                stopListeners();
+                console.log(`Booking ${bookingId} has been ${bookingData?.status}. Stopping listeners.`);
+            }
+        });
 
         return res.status(200).json({
             success: true,
-            message: "Booking confirmed successfully!",
+            message: "Booking confirmed successfully and location tracking started!",
             booking: updatedBooking,
             driver: updatedDriver
         });
