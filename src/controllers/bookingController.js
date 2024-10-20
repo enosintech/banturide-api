@@ -190,7 +190,7 @@ export const searchDriversForBooking = async (req, res) => {
         const searchDrivers = async () => {
             const availableDriversSnapshot = await db.collection('drivers')
                 .where('driverStatus', '==', 'online')
-                .where("bookingClass", "==", booking?.bookingClass)
+                .where("bookingClass", "array-contains", booking?.bookingClass)
                 .where("seats", '==',  booking?.seats)
                 .get();   
 
@@ -245,7 +245,7 @@ export const searchDriversForBooking = async (req, res) => {
 
         driverStatusUnsubscribe = db.collection('drivers')
             .where('driverStatus', '==', 'online')
-            .where("bookingClass", "==", booking?.bookingClass)
+            .where("bookingClass", "array-contains", booking?.bookingClass)
             .where("seats", '==',  booking?.seats)
             .onSnapshot(snapshot => {
                 snapshot.docChanges().forEach(async (change) => {
