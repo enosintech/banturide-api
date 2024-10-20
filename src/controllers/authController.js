@@ -54,7 +54,8 @@ export const registerDriverController = async (req, res) => {
             knownFor: ["New Driver"],
             location: {
                 type: "Point",
-                coordinates: [0, 0]
+                coordinates: [0, 0],
+                description: "",
             },
             createdAt: new Date().toISOString()
         });

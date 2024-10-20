@@ -168,7 +168,7 @@ export const getAllComplaints = async (req, res) => {
 
 
 export const approveDriverApplication = async (req, res) => {
-    const { applicationId, driverId, bookingClass, deliveryClass } = req.body;
+    const { applicationId, driverId, bookingClass = [], deliveryClass = [] } = req.body;
 
     if (!applicationId || !driverId) {
         return res.status(400).json({
@@ -203,10 +203,10 @@ export const approveDriverApplication = async (req, res) => {
             };
 
             if (bookingClass) {
-                driverUpdateData.bookingClass = bookingClass;
+                driverUpdateData.bookingClass = Array.isArray(bookingClass) ? bookingClass : [];
             }
             if (deliveryClass) {
-                driverUpdateData.deliveryClass = deliveryClass;
+                driverUpdateData.deliveryClass = Array.isArray(deliveryClass) ? deliveryClass : [];
             }
 
             transaction.update(applicationRef, {

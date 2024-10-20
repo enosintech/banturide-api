@@ -192,6 +192,7 @@ export const searchDriversForBooking = async (req, res) => {
                 .where('driverStatus', '==', 'online')
                 .where("bookingClass", "array-contains", booking?.bookingClass)
                 .where("seats", '==',  booking?.seats)
+                .where("canDriver", "==" , true)
                 .get();   
 
             availableDriversSnapshot.forEach(async doc => {
@@ -247,6 +248,7 @@ export const searchDriversForBooking = async (req, res) => {
             .where('driverStatus', '==', 'online')
             .where("bookingClass", "array-contains", booking?.bookingClass)
             .where("seats", '==',  booking?.seats)
+            .where("canDriver", "==" , true)
             .onSnapshot(snapshot => {
                 snapshot.docChanges().forEach(async (change) => {
                     if (change.type === "added" || change.type === "modified") {
