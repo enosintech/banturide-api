@@ -131,7 +131,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
         const availableDriversSnapshot = await db.collection("drivers")
             .where('driverStatus', "==", "online")
             .where('canDeliver', '==', true)
-            .where("deliveryClass", "array-contains" , delivery.deliveryClass)
+            .where("deliveryClass", "array-contains", delivery.bookingClass)
             .get();
 
         const assignDriver = async (doc) => {
@@ -153,7 +153,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                     await db.runTransaction(async (transaction) => {
                         const driverDoc = await transaction.get(driverRef);
 
-                        if (!driverDoc.exists || driverDoc.data().driverStatus !== "available") {
+                        if (!driverDoc.exists || driverDoc.data().driverStatus !== "online") {
                             throw new Error("Driver does not exist or is no longer available");
                         }
 
@@ -207,7 +207,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                         }
 
                         const driverData = snapshot.data();
-                        const driverLocation = driverData.location.coordinates;
+                        const driverLocation = driverData.location;
 
                         if(driverData.driverStatus === "online"){
                             stopListeners();
@@ -279,7 +279,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
             unsubscribe = db.collection("drivers")
                 .where('driverStatus', "==", "online")
                 .where('canDeliver', '==', true)
-                .where("deliveryClass", "array-contains", delivery.deliveryClass)
+                .where("deliveryClass", "array-contains", delivery.bookingClass)
                 .onSnapshot(async (snapshot) => {
                     for (const doc of snapshot.docs) {
                         await assignDriver(doc);
