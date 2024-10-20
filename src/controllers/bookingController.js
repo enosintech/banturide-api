@@ -406,7 +406,7 @@ export const assignDriverToBooking = async (req, res) => {
         });
 
         await driverRef.update({
-            driverStatus: 'reserved',
+            driverStatus: 'driving',
             reservedUntil: null
         });
 
@@ -447,8 +447,9 @@ export const assignDriverToBooking = async (req, res) => {
             const driverData = snapshot.data();
             const driverLocation = driverData.location;
 
-            if(driverData.driverStatus !== "reserved"){
+            if(driverData.driverStatus === "online"){
                 stopListeners();
+                console.log("this is why")
                 sendDataToClient(updatedBooking.userId, "notification", { 
                     type: "driverReleased", 
                     message: "Driver released and listening for location has stopped" 
@@ -464,7 +465,7 @@ export const assignDriverToBooking = async (req, res) => {
             const latestBookingSnapshot = await bookingRef.get();
             const latestBooking = latestBookingSnapshot.data();
 
-            if(driverData.driverStatus === "reserved"){
+            if(driverData.driverStatus !== "online"){
                 sendDataToClient(updatedBooking.userId, "notification", { 
                     type: "locationUpdated", 
                     message: "Your driver location has been updated", 
@@ -707,7 +708,7 @@ export const findNewDriver = async (req, res) => {
         })
 
         await driverRef.update({
-            driverStatus: "available",
+            driverStatus: "online",
             reservedBy: null,
             reservedUntil: null,
         })
@@ -762,7 +763,7 @@ export const cancelBooking = async (req, res) => {
         if (booking.driverId) {
             const driverRef = db.collection('drivers').doc(booking.driverId);
             await driverRef.update({
-                driverStatus: 'available',
+                driverStatus: 'online',
                 reservedBy: null,
             });
 

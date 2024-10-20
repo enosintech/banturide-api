@@ -158,7 +158,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                         }
 
                         transaction.update(driverRef, {
-                            driverStatus: "reserved",
+                            driverStatus: "driving",
                             reservedBy: delivery.userId,
                         });
                     });
@@ -209,7 +209,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                         const driverData = snapshot.data();
                         const driverLocation = driverData.location.coordinates;
 
-                        if(driverData.driverStatus === "available"){
+                        if(driverData.driverStatus === "online"){
                             stopListeners();
                             sendDataToClient(delivery.userId, "notification", { 
                                 type: "driverReleased", 
@@ -226,7 +226,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                         const updatedDeliverySnapshot = await deliveryRef.get();
                         const updatedDelivery = updatedDeliverySnapshot.data();
 
-                        if(driverData.driverStatus !== "available"){
+                        if(driverData.driverStatus !== "online"){
                             sendDataToClient(delivery.userId, "notification", { 
                                 type: "locationUpdated", 
                                 message: "Your driver location has been updated", 
