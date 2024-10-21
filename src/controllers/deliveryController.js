@@ -360,7 +360,7 @@ export const findNewDriverForDelivery = async (req, res) => {
         })
 
         await driverRef.update({
-            driverStatus: "available",
+            driverStatus: "online",
             reservedBy: null,
         })
 
@@ -416,7 +416,7 @@ export const cancelDelivery = async (req, res) => {
         if (delivery.driverId) {
             const driverRef = db.collection('drivers').doc(delivery.driverId);
             await driverRef.update({
-                driverStatus: 'available',
+                driverStatus: 'online',
                 reservedBy: null,
             });
 
