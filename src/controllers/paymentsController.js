@@ -209,14 +209,14 @@ export const confirmPaymentAndMarkDeliveryAsSuccessful = async (req, res) => {
     }
 
     const delivery = deliveryDoc.data();
-    const driverDistanceFromDropoff = calculateDistance(delivery.driverCurrentLocation, delivery.dropOffLocation);
+    // const driverDistanceFromDropoff = calculateDistance(delivery.driverCurrentLocation, delivery.dropOffLocation);
 
-    if (driverDistanceFromDropoff > 1) {
-      return res.status(400).json({
-          success: false,
-          message: `Driver is ${driverDistanceFromDropoff.toFixed(2)} km away and is not close enough to the dropoff location to confirm payment.`,
-      });
-    }
+    // if (driverDistanceFromDropoff > 1) {
+    //   return res.status(400).json({
+    //       success: false,
+    //       message: `Driver is ${driverDistanceFromDropoff.toFixed(2)} km away and is not close enough to the dropoff location to confirm payment.`,
+    //   });
+    // }
 
     const newPayment = {
       bookingId: deliveryId,
