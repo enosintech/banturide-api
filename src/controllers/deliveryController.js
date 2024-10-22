@@ -147,7 +147,7 @@ export const searchAndAssignDriverToDelivery = async (req, res) => {
                 const driverId = doc.id;
                 const driverRef = db.collection('drivers').doc(driverId);
                 const deliveryRef = db.collection('deliveries').doc(deliveryId);
-                const userRef = db.collection("drivers").doc(user.uid);
+                const userRef = db.collection("passengers").doc(user.uid);
 
                 try {
                     await db.runTransaction(async (transaction) => {
