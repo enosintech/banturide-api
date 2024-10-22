@@ -69,24 +69,27 @@ io.on("connection", (socket) => {
             console.log(connectedUsers);
 
             if (messageBuffer.has(userId)) {
-                console.log(`Sending latest buffered message to reconnected user ${userId}`);
+                console.log(`Sending latest buffered message to reconnected user ${userId} ${socket.id}`);
                 const { event, data } = messageBuffer.get(userId);
                 // io.to(socket.id).emit(event, data);
                 const user = connectedUsers.get(userId);
-                io.to(user.socketId).emit(event, data);
-                console.log(`Sent buffered message:`, { event, data });
+                
+                console.log(user)
+                io.to(socket.id).emit(event, data);
+                
+                console.log(`Sent buffered message ${socket.id}:`, { event, data });
                 messageBuffer.delete(userId);
             }
 
             if (textMessageBuffer.has(userId)) {
-                console.log(`Sending buffered text messages to reconnected user ${userId}`);
+                console.log(`Sending buffered text messages to reconnected user ${userId} ${socket.id}`);
                 const messages = textMessageBuffer.get(userId);
                 const recipient = connectedUsers.get(userId);
                 messages.forEach(({ event, data }) => {
                     // io.to(socket.id).emit(event, data);
-                    if(recipient) {
-                        io.to(recipient.socketId).emit(event, data);
-                    }
+               
+                    io.to(socket.id).emit(event, data);
+                    
                     
                     console.log(`Sent buffered text message:`, data);
                 });
