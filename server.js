@@ -71,7 +71,13 @@ io.on("connection", (socket) => {
             if (messageBuffer.has(userId)) {
                 console.log(`Sending latest buffered message to reconnected user ${userId}`);
                 const { event, data } = messageBuffer.get(userId);
-                io.to(socket.id).emit(event, data);
+                // io.to(socket.id).emit(event, data);
+                sendDataToClient(userId, "notification", {
+                    type: data?.type,
+                    notificationId: data?.notificationId,
+                    message: data?.message,
+                    booking: JSON.stringify(data?.booking),
+                });
                 console.log(`Sent buffered message:`, { event, data });
                 messageBuffer.delete(userId);
             }
@@ -79,8 +85,12 @@ io.on("connection", (socket) => {
             if (textMessageBuffer.has(userId)) {
                 console.log(`Sending buffered text messages to reconnected user ${userId}`);
                 const messages = textMessageBuffer.get(userId);
+                const recipient = connectedUsers.get(userId);
                 messages.forEach(({ event, data }) => {
-                    io.to(socket.id).emit(event, data);
+                    if(recipient) {
+                        io.to(recipient.socketId).emit('message', { text, senderId, userId, time, id });
+                    }
+                    
                     console.log(`Sent buffered text message:`, data);
                 });
                 textMessageBuffer.delete(userId);
