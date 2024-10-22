@@ -28,7 +28,7 @@ const io = new Server(server, {
     cors: {
         origin: "https://banturide-api.onrender.com",
     }
-})
+});
 
 const connectedUsers = new Map();
 const messageBuffer = new Map();
@@ -36,6 +36,7 @@ const textMessageBuffer = new Map();
 
 const bufferMessage = (userId, event, data) => {
     messageBuffer.set(userId, { event, data });
+    console.log(`Buffered message for ${userId}:`, { event, data });
 };
 
 const bufferTextMessage = (userId, event, data) => {
@@ -54,7 +55,7 @@ const sendDataToClient = (userId, event, data) => {
         console.log(`User with ID ${userId} is not connected. Buffering Message.`);
         bufferMessage(userId, event, data);
     }
-}
+};
 
 io.on("connection", (socket) => {
     socket.on("register", ({ userId, userType}) => {
@@ -68,15 +69,19 @@ io.on("connection", (socket) => {
             console.log(connectedUsers);
 
             if (messageBuffer.has(userId)) {
+                console.log(`Sending latest buffered message to reconnected user ${userId}`);
                 const { event, data } = messageBuffer.get(userId);
                 io.to(socket.id).emit(event, data);
+                console.log(`Sent buffered message:`, { event, data });
                 messageBuffer.delete(userId);
             }
 
             if (textMessageBuffer.has(userId)) {
+                console.log(`Sending buffered text messages to reconnected user ${userId}`);
                 const messages = textMessageBuffer.get(userId);
                 messages.forEach(({ event, data }) => {
                     io.to(socket.id).emit(event, data);
+                    console.log(`Sent buffered text message:`, data);
                 });
                 textMessageBuffer.delete(userId);
             }
@@ -92,7 +97,7 @@ io.on("connection", (socket) => {
                 message: `Failed to register user: ${error.message}`,
             });
         }
-    })
+    });
 
     socket.on('sendMessage', (messageData) => {
         const { recipientId, text, senderId, time, id } = messageData;
@@ -102,20 +107,22 @@ io.on("connection", (socket) => {
             io.to(recipient.socketId).emit('message', { text, senderId, recipientId, time, id });
             console.log(`Message sent from ${senderId} to ${recipientId}: ${text} at ${time}.`);
         } else {
-            console.log(`Recipient ${recipientId} is not connected. Buffering Texts`);
-            bufferTextMessage(recipientId, 'message', { text, senderId, recipientId, time, id})
+            console.log(`Recipient ${recipientId} is not connected. Buffering Text Message`);
+            bufferTextMessage(recipientId, 'message', { text, senderId, recipientId, time, id });
         }
     });
 
     socket.on("disconnect", () => {
+        let disconnectedUserId = null;
         connectedUsers.forEach((value, key) => {
             if(value.socketId === socket.id) {
+                disconnectedUserId = key;
                 connectedUsers.delete(key);
-                console.log(`User Disconnected: ${key}`)
+                console.log(`User Disconnected: ${key}`);
             }
         });
-    })
-})
+    });
+});
 
 app.use("/auth", authRoutes);
 app.use("/booking", bookingRoutes);
@@ -125,11 +132,11 @@ app.use("/payment", paymentsRoutes);
 app.use("/profile", profileRoutes);
 app.use("/favorites", favoritesRoutes);
 app.use("/reviews", reviewRoutes);
-app.use("/admin", adminRoutes)
-app.use("/complain", complaintRoutes)
+app.use("/admin", adminRoutes);
+app.use("/complain", complaintRoutes);
 
 server.listen(PORT, () => {
-    console.log(`Server is running on PORT ${PORT}`)
+    console.log(`Server is running on PORT ${PORT}`);
 });
 
 export { sendDataToClient };
