@@ -490,7 +490,7 @@ export const deliveryRiderAtPickUp = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Driver Arrived at pick location successfully set to true",
-            booking: JSON.stringify(updatedDelivery)
+            booking: updatedDelivery
         });
 
     } catch (error) {
@@ -546,7 +546,7 @@ export const startDelivery = async ( req, res ) => {
         return res.status(200).json({
             success: true,
             message: "Ride has started.",
-            booking: JSON.stringify(updatedDelivery)
+            booking: updatedDelivery
         });
 
     } catch (error) {
@@ -603,7 +603,7 @@ export const arrivedFirstStopDelivery = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "First stop set to arrived successfully.",
-            booking: JSON.stringify(updatedDelivery)
+            booking: updatedDelivery
         });
 
 
@@ -618,7 +618,7 @@ export const arrivedFirstStopDelivery = async (req, res) => {
 };
 
 export const deliveryRiderAtDropOff = async (req, res) => {
-    
+
     const { deliveryId } = req.body;
 
     if(!deliveryId){
@@ -661,7 +661,7 @@ export const deliveryRiderAtDropOff = async (req, res) => {
         return res.status(200).json({
             success: true,
             message: "Ride has ended.",
-            booking: JSON.stringify(updatedDelivery)
+            booking: updatedDelivery
         });
 
     } catch (error) {
