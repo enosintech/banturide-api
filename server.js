@@ -73,9 +73,14 @@ io.on("connection", (socket) => {
                 const { event, data } = messageBuffer.get(userId);
                 // io.to(socket.id).emit(event, data);
                 const user = connectedUsers.get(userId);
+
+                console.log('Emitting event:', event);
+                console.log('With data:', data);
+                console.log('To socket:', socket.id);
                 
                 console.log(user)
-                io.to(socket.id).emit(event, data);
+                // io.to(socket.id).emit(event, data);
+                socket.emit(event, data);
                 
                 console.log(`Sent buffered message ${socket.id}:`, { event, data });
                 messageBuffer.delete(userId);
@@ -88,7 +93,8 @@ io.on("connection", (socket) => {
                 messages.forEach(({ event, data }) => {
                     // io.to(socket.id).emit(event, data);
                
-                    io.to(socket.id).emit(event, data);
+                    // io.to(socket.id).emit(event, data);
+                    socket.emit(event, data);
                     
                     
                     console.log(`Sent buffered text message:`, data);
