@@ -58,6 +58,47 @@ export const loginAdmin = async (req, res) => {
     }
 };
 
+// Get driver application by ID
+export const getDriverById = async (req, res) => {
+    const { id } = req.params; // Get the driver ID from the request parameters
+
+    if (!id) {
+        return res.status(400).json({
+            success: false,
+            message: "Driver ID is required"
+        });
+    }
+
+    try {
+        const applicationDoc = await db.collection('driver-applications').doc(id).get();
+
+        if (!applicationDoc.exists) {
+            return res.status(404).json({
+                success: false,
+                message: "Driver application not found"
+            });
+        }
+
+        const applicationData = {
+            id: applicationDoc.id,
+            ...applicationDoc.data()
+        };
+
+        return res.status(200).json({
+            success: true,
+            application: applicationData
+        });
+
+    } catch (error) {
+        console.error("Error fetching driver application:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Internal server error"
+        });
+    }
+};
+
+
 // Create an admin user
 export const createAdmin = async (req, res) => {
     const { email, password } = req.body;
